@@ -1,2 +1,78 @@
+# =========================
+# Operating System Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDEs and Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Docker & Data
+# =========================
+# Ignore local VictoriaMetrics data if bound to a local directory instead of a volume
+victoria-metrics-data/
+hqud_vm_data/
+
+# =========================
+# Module A & C: Go & eBPF
+# =========================
+# Binaries
 agent/hqud-agent
-agent/bpf_x86_bpfel.o
+backend/hqud-backend
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+__debug_bin
+
+# eBPF Generated files (optional to ignore, but usually compiled artifacts)
+agent/bpf_*.o
+agent/bpf_*_bpfel.go
+agent/bpf_*_bpfel.o
+agent/bpf_*_bpfeb.go
+agent/bpf_*_bpfeb.o
+
+# Go workspace
+go.work
+go.work.sum
+
+# =========================
+# Module D: SvelteKit / Node
+# =========================
+frontend/node_modules/
+frontend/build/
+frontend/.svelte-kit/
+frontend/package-lock.json
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnpm-debug.log*
+
+# Env files
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# =========================
+# Module E: Python Auditor
+# =========================
+auditor/venv/
+auditor/env/
+auditor/.venv/
+auditor/__pycache__/
+auditor/*.py[cod]
+auditor/*$py.class
+auditor/.pytest_cache/
+auditor/audit_report.md
+testfile

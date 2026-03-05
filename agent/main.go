@@ -3,16 +3,53 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"
+	"gopkg.in/yaml.v3"
+
 	"hqud-backend/pkg/tsdb"
+	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/pmu"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 bpf bpf/io_latency.c
 
+type Config struct {
+	NodeName string `yaml:"node_name"`
+	Specs    struct {
+		Cores         int     `yaml:"cores"`
+		PeakGflops    float64 `yaml:"peak_gflops"`
+		MaxMemBwGbps float64 `yaml:"max_mem_bw_gbps"`
+	} `yaml:"specs"`
+	Ipmi struct {
+		Host string `yaml:"host"`
+		User string `yaml:"user"`
+		Pass string `yaml:"pass"`
+	} `yaml:"ipmi"`
+}
+
+func loadConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
 func main() {
+	log.Println("Loading Unified Dashboard Configuration...")
+	cfg, err := loadConfig("../config.yaml")
+	if err != nil {
+		log.Fatalf("Failed to load config.yaml: %v", err)
+	}
+	log.Printf("Config loaded successfully for Target Node: %s", cfg.NodeName)
+
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatalf("Failed to remove memlock limit: %v", err)
 	}
@@ -36,10 +73,26 @@ func main() {
 	defer kpDone.Close()
 
 	log.Println("eBPF program successfully loaded and hooked with MQ Kprobes.")
-	log.Println("Measuring block I/O latency and pushing to VictoriaMetrics...")
+
+	log.Println("Initializing Hardware PMU Collector...")
+	pmuCollector, err := pmu.NewCollector()
+	if err != nil {
+		log.Fatalf("Failed to initialize system PMU: %v", err)
+	}
+	defer pmuCollector.Close()
+
+	if err := pmuCollector.Start(); err != nil {
+		log.Fatalf("Failed to start PMU counters: %v", err)
+	}
+	log.Println("PMU started successfully.")
+
+	log.Println("Measuring block I/O latency and CPU CPI. Pushing to VictoriaMetrics...")
 
 	// Initialize TSDB Client
 	tsdbClient := tsdb.NewClient("http://localhost:8428/api/v1/import/prometheus")
+
+	// Store previous PMU counts to calculate deltas
+	prevCycles, prevInstructions, _ := pmuCollector.ReadCounters()
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -98,11 +151,45 @@ func main() {
 			// Push silently in a goroutine
 			go func(m []tsdb.Metric) {
 				if err := tsdbClient.Push(m); err != nil {
-					log.Printf("TSDB push failed: %v", err)
+					log.Printf("TSDB push block I/O failed: %v", err)
 				}
 			}(metrics)
 		} else {
 			log.Println("...No I/O events recorded...")
+		}
+
+		// --- MODULE A Addendum: PMU CPI Calculation ---
+		cyc, currInst, err := pmuCollector.ReadCounters()
+		if err != nil {
+			log.Printf("Error reading PMU counters: %v", err)
+			continue
+		}
+
+		deltaCyc := cyc - prevCycles
+		deltaInst := currInst - prevInstructions
+
+		prevCycles = cyc
+		prevInstructions = currInst
+
+		// Guard against division by zero 
+		if deltaInst > 0 {
+			cpi := float64(deltaCyc) / float64(deltaInst)
+			log.Printf("--- PMU CPI: %.2f (Cycles: %d, Instructions: %d) ---", cpi, deltaCyc, deltaInst)
+			
+			pmuMetric := []tsdb.Metric{{
+				Name: "hqud_cpu_cpi",
+				Labels: map[string]string{
+					"host":   cfg.NodeName,
+					"modulo": "ebpf_pmu",
+				},
+				Value:     cpi,
+				Timestamp: now,
+			}}
+			go func(m []tsdb.Metric) {
+				if err := tsdbClient.Push(m); err != nil {
+					log.Printf("TSDB push CPI failed: %v", err)
+				}
+			}(pmuMetric)
 		}
 	}
 }

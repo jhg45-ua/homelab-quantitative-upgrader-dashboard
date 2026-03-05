@@ -1,0 +1,9 @@
+node_name: "r720-vm"
+specs:
+  cores: 16
+  peak_gflops: 400.0
+  max_mem_bw_gbps: 51.2
+ipmi:
+  host: "IP"
+  user: "root"
+  pass: "calvin"

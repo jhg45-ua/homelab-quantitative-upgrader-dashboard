@@ -188,11 +188,16 @@ func main() {
 				cacheMissRate = float64(deltaCacheMisses) / float64(deltaCacheRefs) * 100.0
 			}
 
+			// AMAT (Average Memory Access Time) — Hennessy & Patterson fundamental formula:
+			// AMAT = L1_Hit_Time + Miss_Rate * RAM_Penalty
+			const l1HitCycles = 4.0
+			const ramPenaltyCycles = 150.0
+			amat := l1HitCycles + ((cacheMissRate / 100.0) * ramPenaltyCycles)
+
 			// Context Switches per second = delta / 5s tick interval
 			ctxSwitchesPS := float64(deltaCtx) / 5.0
 
-			log.Printf("--- Cache Miss Rate: %.2f%% (Refs: %d, Misses: %d) ---", cacheMissRate, deltaCacheRefs, deltaCacheMisses)
-			log.Printf("--- Context Switches/s: %.2f ---", ctxSwitchesPS)
+			log.Printf("--- Cache Miss Rate: %.2f%% | AMAT: %.2f cycles | CtxSw/s: %.2f ---", cacheMissRate, amat, ctxSwitchesPS)
 
 			pmuMetrics := []tsdb.Metric{
 				{
@@ -205,6 +210,12 @@ func main() {
 					Name: "hqud_cpu_cache_miss_rate",
 					Labels: map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
 					Value:     cacheMissRate,
+					Timestamp: now,
+				},
+				{
+					Name: "hqud_cpu_amat_cycles",
+					Labels: map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
+					Value:     amat,
 					Timestamp: now,
 				},
 				{

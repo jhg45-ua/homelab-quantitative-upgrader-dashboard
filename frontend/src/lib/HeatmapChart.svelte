@@ -154,6 +154,6 @@
   }
 </script>
 
-<div class="w-full h-[600px] border border-scientific-border rounded-lg bg-scientific-surface shadow-lg overflow-hidden relative">
+<div class="w-full h-full">
    <div bind:this={chartContainer} class="w-full h-full p-4"></div>
 </div>

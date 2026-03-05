@@ -5,6 +5,7 @@
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
   let interval: ReturnType<typeof setInterval>;
+  let ro: ResizeObserver;
 
   const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
   const PROMQL_QUERY = `hqud_cpu_cpi{host="r720-vm"}`;
@@ -86,15 +87,15 @@
 
     chart.setOption(option);
 
+    ro = new ResizeObserver(() => { if (chart) chart.resize(); });
+    ro.observe(chartContainer);
+
     await fetchData();
     interval = setInterval(fetchData, 5000);
-
-    const handleResize = () => chart.resize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   });
 
   onDestroy(() => {
+    if (ro) ro.disconnect();
     if (interval) clearInterval(interval);
     if (chart) chart.dispose();
   });
@@ -139,6 +140,6 @@
   }
 </script>
 
-<div class="w-full h-full">
-  <div bind:this={chartContainer} class="w-full h-full p-4"></div>
+<div style="position:relative; width:100%; height:100%;">
+  <div bind:this={chartContainer} style="position:absolute; inset:0;"></div>
 </div>

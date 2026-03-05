@@ -5,6 +5,7 @@
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
   let interval: ReturnType<typeof setInterval>;
+  let ro: ResizeObserver;
 
   const VM_URL = '/api/vm/api/v1/query_range';
   const CACHE_MISS_QUERY = `hqud_cpu_cache_miss_rate{host="r720-vm"}`;
@@ -101,15 +102,15 @@
       backgroundColor: 'transparent'
     });
 
+    ro = new ResizeObserver(() => { if (chart) chart.resize(); });
+    ro.observe(chartContainer);
+
     await fetchData();
     interval = setInterval(fetchData, 5000);
-
-    const onResize = () => chart.resize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
   });
 
   onDestroy(() => {
+    if (ro) ro.disconnect();
     if (interval) clearInterval(interval);
     if (chart) chart.dispose();
   });
@@ -166,6 +167,6 @@
   }
 </script>
 
-<div class="w-full h-full">
-  <div bind:this={chartContainer} class="w-full h-full p-2"></div>
+<div style="position:relative; width:100%; height:100%;">
+  <div bind:this={chartContainer} style="position:absolute; inset:0;"></div>
 </div>

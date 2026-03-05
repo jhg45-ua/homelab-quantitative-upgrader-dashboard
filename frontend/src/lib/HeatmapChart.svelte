@@ -5,6 +5,7 @@
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
   let interval: ReturnType<typeof setInterval>;
+  let ro: ResizeObserver;
 
   const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
   
@@ -13,6 +14,11 @@
 
   onMount(async () => {
     chart = echarts.init(chartContainer);
+
+    // ResizeObserver fires whenever the container changes size (flex layout, window resize)
+    // This is more reliable than window.resize for proportional flex layouts
+    ro = new ResizeObserver(() => { if (chart) chart.resize(); });
+    ro.observe(chartContainer);
     
     const option = {
       title: {
@@ -154,6 +160,6 @@
   }
 </script>
 
-<div class="w-full h-full">
-   <div bind:this={chartContainer} class="w-full h-full p-4"></div>
+<div style="position:relative; width:100%; height:100%;">
+  <div bind:this={chartContainer} style="position:absolute; inset:0;"></div>
 </div>

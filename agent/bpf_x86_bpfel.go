@@ -54,8 +54,8 @@ type bpfSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type bpfProgramSpecs struct {
-	HandleBlockRqComplete *ebpf.ProgramSpec `ebpf:"handle_block_rq_complete"`
-	HandleBlockRqIssue    *ebpf.ProgramSpec `ebpf:"handle_block_rq_issue"`
+	BlkMqCompleteRequest *ebpf.ProgramSpec `ebpf:"blk_mq_complete_request"`
+	BlkMqStartRequest    *ebpf.ProgramSpec `ebpf:"blk_mq_start_request"`
 }
 
 // bpfMapSpecs contains maps before they are loaded into the kernel.
@@ -113,14 +113,14 @@ type bpfVariables struct {
 //
 // It can be passed to loadBpfObjects or ebpf.CollectionSpec.LoadAndAssign.
 type bpfPrograms struct {
-	HandleBlockRqComplete *ebpf.Program `ebpf:"handle_block_rq_complete"`
-	HandleBlockRqIssue    *ebpf.Program `ebpf:"handle_block_rq_issue"`
+	BlkMqCompleteRequest *ebpf.Program `ebpf:"blk_mq_complete_request"`
+	BlkMqStartRequest    *ebpf.Program `ebpf:"blk_mq_start_request"`
 }
 
 func (p *bpfPrograms) Close() error {
 	return _BpfClose(
-		p.HandleBlockRqComplete,
-		p.HandleBlockRqIssue,
+		p.BlkMqCompleteRequest,
+		p.BlkMqStartRequest,
 	)
 }
 

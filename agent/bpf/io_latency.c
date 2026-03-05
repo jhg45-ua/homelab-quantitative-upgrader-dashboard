@@ -2,6 +2,7 @@
 
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
+#include <bpf/bpf_tracing.h>
 
 char __license[] SEC("license") = "Dual MIT/GPL";
 
@@ -19,50 +20,27 @@ struct {
     __type(value, u64);
 } io_latency_hist SEC(".maps");
 
-struct tp_block_rq_issue {
-    u64 pad;
-    u32 dev;
-    u32 _pad1;
-    u64 sector;
-    u32 nr_sector;
-    u32 bytes;
-    char rwbs[8];
-    char comm[16];
-    void *cmd;
-};
-
-struct tp_block_rq_complete {
-    u64 pad;
-    u32 dev;
-    u32 _pad1;
-    u64 sector;
-    u32 nr_sector;
-    int error;
-    char rwbs[8];
-    void *cmd;
-};
-
-SEC("tracepoint/block/block_rq_issue")
-int handle_block_rq_issue(struct tp_block_rq_issue *ctx) {
-    void *req = ctx->cmd;
+SEC("kprobe/blk_mq_start_request")
+int BPF_KPROBE(blk_mq_start_request, struct request *req) {
     u64 ts = bpf_ktime_get_ns();
+    void *req_ptr = req;
 
-    bpf_map_update_elem(&start_time, &req, &ts, BPF_ANY);
+    bpf_map_update_elem(&start_time, &req_ptr, &ts, BPF_ANY);
     return 0;
 }
 
-SEC("tracepoint/block/block_rq_complete")
-int handle_block_rq_complete(struct tp_block_rq_complete *ctx) {
-    void *req = ctx->cmd;
+SEC("kprobe/blk_mq_complete_request")
+int BPF_KPROBE(blk_mq_complete_request, struct request *req) {
+    void *req_ptr = req;
     u64 *tsp, latency;
     
-    tsp = bpf_map_lookup_elem(&start_time, &req);
+    tsp = bpf_map_lookup_elem(&start_time, &req_ptr);
     if (!tsp) {
         return 0;
     }
 
     latency = bpf_ktime_get_ns() - *tsp;
-    bpf_map_delete_elem(&start_time, &req);
+    bpf_map_delete_elem(&start_time, &req_ptr);
 
     u64 lat_us = latency / 1000;
     u32 bucket = 0;

@@ -11,33 +11,29 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 bpf bpf/io_latency.c
 
 func main() {
-	// Remove resource limits for kernels <5.11.
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatalf("Failed to remove memlock limit: %v", err)
 	}
 
-	// Load the compiled eBPF ELF and load it into the kernel.
 	var objs bpfObjects
 	if err := loadBpfObjects(&objs, nil); err != nil {
 		log.Fatalf("Loading eBPF objects failed: %v", err)
 	}
 	defer objs.Close()
 
-	// Link to block_rq_issue
-	tpIssue, err := link.Tracepoint("block", "block_rq_issue", objs.HandleBlockRqIssue, nil)
+	kpStart, err := link.Kprobe("blk_mq_start_request", objs.BlkMqStartRequest, nil)
 	if err != nil {
-		log.Fatalf("Opening tracepoint block_rq_issue failed: %v", err)
+		log.Fatalf("Opening kprobe blk_mq_start_request failed: %v", err)
 	}
-	defer tpIssue.Close()
+	defer kpStart.Close()
 
-	// Link to block_rq_complete
-	tpComplete, err := link.Tracepoint("block", "block_rq_complete", objs.HandleBlockRqComplete, nil)
+	kpDone, err := link.Kprobe("blk_mq_complete_request", objs.BlkMqCompleteRequest, nil)
 	if err != nil {
-		log.Fatalf("Opening tracepoint block_rq_complete failed: %v", err)
+		log.Fatalf("Opening kprobe blk_mq_complete_request failed: %v", err)
 	}
-	defer tpComplete.Close()
+	defer kpDone.Close()
 
-	log.Println("eBPF program successfully loaded and hooked. Measuring block I/O latency...")
+	log.Println("eBPF program successfully loaded and hooked with MQ Kprobes. Measuring block I/O latency...")
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -45,7 +41,6 @@ func main() {
 	for range ticker.C {
 		log.Println("\n=== I/O Latency Histogram (Accumulative) ===")
 	
-		// Iterate over Map values
 		var bucket uint32
 		var count uint64
 		iterator := objs.IoLatencyHist.Iterate()

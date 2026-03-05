@@ -6,7 +6,7 @@
   let chart: echarts.ECharts;
   let interval: ReturnType<typeof setInterval>;
 
-  const VICTORIA_METRICS_URL = 'http://localhost:8428/api/v1/query_range';
+  const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
   const PROMQL_QUERY = `hqud_cpu_cpi{host="r720-vm"}`;
 
   onMount(async () => {

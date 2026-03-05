@@ -2,12 +2,13 @@
   import { onMount, onDestroy } from 'svelte';
   import HeatmapChart from '$lib/HeatmapChart.svelte';
   import CPIChart from '$lib/CPIChart.svelte';
+  import MemoryOSChart from '$lib/MemoryOSChart.svelte';
 
   let powerWatts = "---";
   let efficiencyIpsW = "---";
   let interval: ReturnType<typeof setInterval>;
 
-  const VICTORIA_METRICS_INSTANT = 'http://localhost:8428/api/v1/query';
+  const VICTORIA_METRICS_INSTANT = '/api/vm/api/v1/query';
 
   async function fetchScalars() {
     try {
@@ -80,6 +81,7 @@
     <!-- Scientific Visualizations -->
     <HeatmapChart />
     <CPIChart />
+    <MemoryOSChart />
 
   </section>
 </main>

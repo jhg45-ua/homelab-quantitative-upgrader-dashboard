@@ -6,7 +6,7 @@
   let chart: echarts.ECharts;
   let interval: ReturnType<typeof setInterval>;
 
-  const VICTORIA_METRICS_URL = 'http://localhost:8428/api/v1/query_range';
+  const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
   
   // The rate at which the eBPF agent buckets fill over 1 minute
   const PROMQL_QUERY = `sum(rate(hqud_io_latency_usec_bucket{host="r720-vm"}[1m])) by (le)`;

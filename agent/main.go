@@ -97,7 +97,7 @@ func main() {
 	tsdbClient := tsdb.NewClient("http://localhost:8428/api/v1/import/prometheus")
 
 	// Store previous PMU counts to calculate deltas
-	prevCycles, prevInstructions, _ := pmuCollector.ReadCounters()
+	prevCounters, _ := pmuCollector.ReadCounters()
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -163,45 +163,68 @@ func main() {
 			log.Println("...No I/O events recorded...")
 		}
 
-		// --- MODULE A Addendum: PMU CPI Calculation ---
-		cyc, currInst, err := pmuCollector.ReadCounters()
+		// --- MODULE A: PMU CPI + Cache Miss Rate + Context Switches ---
+		curr, err := pmuCollector.ReadCounters()
 		if err != nil {
 			log.Printf("Error reading PMU counters: %v", err)
 			continue
 		}
 
-		deltaCyc := cyc - prevCycles
-		deltaInst := currInst - prevInstructions
+		deltaCyc := curr.Cycles - prevCounters.Cycles
+		deltaInst := curr.Instructions - prevCounters.Instructions
+		deltaCacheRefs := curr.CacheRefs - prevCounters.CacheRefs
+		deltaCacheMisses := curr.CacheMisses - prevCounters.CacheMisses
+		deltaCtx := curr.CtxSwitches - prevCounters.CtxSwitches
 
-		prevCycles = cyc
-		prevInstructions = currInst
+		prevCounters = curr
 
-		// Guard against division by zero 
 		if deltaInst > 0 {
 			cpi := float64(deltaCyc) / float64(deltaInst)
 			log.Printf("--- PMU CPI: %.2f (Cycles: %d, Instructions: %d) ---", cpi, deltaCyc, deltaInst)
-			
-			pmuMetric := []tsdb.Metric{{
-				Name: "hqud_cpu_cpi",
-				Labels: map[string]string{
-					"host":   cfg.NodeName,
-					"modulo": "ebpf_pmu",
+
+			// Cache Miss Rate = (delta_misses / delta_refs) * 100
+			cacheMissRate := 0.0
+			if deltaCacheRefs > 0 {
+				cacheMissRate = float64(deltaCacheMisses) / float64(deltaCacheRefs) * 100.0
+			}
+
+			// Context Switches per second = delta / 5s tick interval
+			ctxSwitchesPS := float64(deltaCtx) / 5.0
+
+			log.Printf("--- Cache Miss Rate: %.2f%% (Refs: %d, Misses: %d) ---", cacheMissRate, deltaCacheRefs, deltaCacheMisses)
+			log.Printf("--- Context Switches/s: %.2f ---", ctxSwitchesPS)
+
+			pmuMetrics := []tsdb.Metric{
+				{
+					Name: "hqud_cpu_cpi",
+					Labels: map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Value:     cpi,
+					Timestamp: now,
 				},
-				Value:     cpi,
-				Timestamp: now,
-			}}
+				{
+					Name: "hqud_cpu_cache_miss_rate",
+					Labels: map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Value:     cacheMissRate,
+					Timestamp: now,
+				},
+				{
+					Name: "hqud_os_context_switches_ps",
+					Labels: map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Value:     ctxSwitchesPS,
+					Timestamp: now,
+				},
+			}
 			go func(m []tsdb.Metric) {
 				if err := tsdbClient.Push(m); err != nil {
-					log.Printf("TSDB push CPI failed: %v", err)
+					log.Printf("TSDB push PMU metrics failed: %v", err)
 				}
-			}(pmuMetric)
+			}(pmuMetrics)
 
-			// --- MODULE A Addendum: IPMI Power & Efficiency ---
+			// --- IPMI Power & Efficiency ---
 			watts, err := ipmiCollector.ReadPowerWatts()
 			if err != nil {
 				log.Printf("IPMI Read Error (skipping power metrics): %v", err)
 			} else {
-				// Ticker is exactly 5 seconds, so IPS = deltaInst / 5
 				ips := float64(deltaInst) / 5.0
 				efficiency := 0.0
 				if watts > 0 {
@@ -212,19 +235,13 @@ func main() {
 				powerMetrics := []tsdb.Metric{
 					{
 						Name: "hqud_power_watts",
-						Labels: map[string]string{
-							"host":   cfg.NodeName,
-							"modulo": "ipmi_oob",
-						},
+						Labels: map[string]string{"host": cfg.NodeName, "modulo": "ipmi_oob"},
 						Value:     watts,
 						Timestamp: now,
 					},
 					{
 						Name: "hqud_efficiency_ips_per_watt",
-						Labels: map[string]string{
-							"host":   cfg.NodeName,
-							"modulo": "quantitative_engine",
-						},
+						Labels: map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
 						Value:     efficiency,
 						Timestamp: now,
 					},

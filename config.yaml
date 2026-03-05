@@ -4,6 +4,6 @@ specs:
   peak_gflops: 400.0
   max_mem_bw_gbps: 51.2
 ipmi:
-  host: "IP"
+  host: "192.168.68.98"
   user: "root"
-  pass: "calvin"
+  pass: "Legocity2019$"

@@ -12,6 +12,7 @@ import (
 
 	"hqud-backend/pkg/tsdb"
 	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/pmu"
+	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/ipmi"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 bpf bpf/io_latency.c
@@ -85,6 +86,10 @@ func main() {
 		log.Fatalf("Failed to start PMU counters: %v", err)
 	}
 	log.Println("PMU started successfully.")
+
+	// --- MODULE A Addendum: Initialize IPMI Collector ---
+	log.Printf("Initializing IPMI Collector for host: %s\n", cfg.Ipmi.Host)
+	ipmiCollector := ipmi.NewCollector(cfg.Ipmi.Host, cfg.Ipmi.User, cfg.Ipmi.Pass)
 
 	log.Println("Measuring block I/O latency and CPU CPI. Pushing to VictoriaMetrics...")
 
@@ -190,6 +195,46 @@ func main() {
 					log.Printf("TSDB push CPI failed: %v", err)
 				}
 			}(pmuMetric)
+
+			// --- MODULE A Addendum: IPMI Power & Efficiency ---
+			watts, err := ipmiCollector.ReadPowerWatts()
+			if err != nil {
+				log.Printf("IPMI Read Error (skipping power metrics): %v", err)
+			} else {
+				// Ticker is exactly 5 seconds, so IPS = deltaInst / 5
+				ips := float64(deltaInst) / 5.0
+				efficiency := 0.0
+				if watts > 0 {
+					efficiency = ips / watts
+				}
+				log.Printf("--- Power: %.2f W, Efficiency: %.2f IPS/W ---", watts, efficiency)
+
+				powerMetrics := []tsdb.Metric{
+					{
+						Name: "hqud_power_watts",
+						Labels: map[string]string{
+							"host":   cfg.NodeName,
+							"modulo": "ipmi_oob",
+						},
+						Value:     watts,
+						Timestamp: now,
+					},
+					{
+						Name: "hqud_efficiency_ips_per_watt",
+						Labels: map[string]string{
+							"host":   cfg.NodeName,
+							"modulo": "quantitative_engine",
+						},
+						Value:     efficiency,
+						Timestamp: now,
+					},
+				}
+				go func(m []tsdb.Metric) {
+					if err := tsdbClient.Push(m); err != nil {
+						log.Printf("TSDB push Power/Efficiency failed: %v", err)
+					}
+				}(powerMetrics)
+			}
 		}
 	}
 }

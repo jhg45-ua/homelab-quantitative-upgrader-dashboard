@@ -11,8 +11,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"hqud-backend/pkg/tsdb"
-	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/pmu"
 	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/ipmi"
+	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/numa"
+	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/pmu"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 bpf bpf/io_latency.c
@@ -263,6 +264,27 @@ func main() {
 					}
 				}(powerMetrics)
 			}
+		}
+
+		// --- MODULE A v2: NUMA Miss Rate (sysfs — works inside KVM VMs) ---
+		numaStats, numaErr := numa.Collect()
+		if numaErr != nil {
+			log.Printf("[NUMA] sysfs read skipped: %v", numaErr)
+		} else {
+			numaMissRate := numaStats.MissRate()
+			log.Printf("--- NUMA Miss Rate: %.2f%% (Hits: %d, Misses: %d) ---",
+				numaMissRate, numaStats.TotalHits, numaStats.TotalMisses)
+
+			go func(v float64) {
+				if err := tsdbClient.Push([]tsdb.Metric{{
+					Name:      "hqud_numa_miss_rate",
+					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "numa_sysfs"},
+					Value:     v,
+					Timestamp: now,
+				}}); err != nil {
+					log.Printf("TSDB push NUMA failed: %v", err)
+				}
+			}(numaMissRate)
 		}
 	}
 }

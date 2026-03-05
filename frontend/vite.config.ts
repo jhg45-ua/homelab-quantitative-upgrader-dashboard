@@ -9,7 +9,16 @@ export default defineConfig({
 				target: 'http://localhost:8428',
 				changeOrigin: true,
 				rewrite: (path) => path.replace(/^\/api\/vm/, '')
+			},
+			'/api/generate-audit': {
+				target: 'http://localhost:8082',
+				changeOrigin: true
+			},
+			'/api/health': {
+				target: 'http://localhost:8082',
+				changeOrigin: true
 			}
 		}
 	}
 });
+

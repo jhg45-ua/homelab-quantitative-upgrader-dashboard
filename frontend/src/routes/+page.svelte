@@ -87,6 +87,42 @@
 
   onMount(() => { fetchData(); interval = setInterval(fetchData, 5000); });
   onDestroy(() => { if (interval) clearInterval(interval); });
+
+  // ── Audit ────────────────────────────────────────────────────────────
+  let auditLoading = false;
+  let auditMarkdown = '';
+  let auditError = '';
+  let showModal = false;
+
+  async function generateAudit() {
+    auditLoading = true;
+    auditError = '';
+    auditMarkdown = '';
+    try {
+      const res = await fetch('/api/generate-audit');
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+      auditMarkdown = await res.text();
+      showModal = true;
+    } catch (e: any) {
+      auditError = e.message ?? String(e);
+      showModal = true;
+    } finally {
+      auditLoading = false;
+    }
+  }
+
+  function downloadMarkdown() {
+    const blob = new Blob([auditMarkdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hqud-audit-${new Date().toISOString().slice(0,16).replace('T','-')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 </script>
 
 <svelte:head><title>HQUD — Executive Overview</title></svelte:head>
@@ -126,7 +162,51 @@
     {/each}
   </div>
 
-  <!-- System info bar -->
+  <!-- Audit trigger card -->
+  <div class="audit-card">
+    <div class="audit-left">
+      <div class="audit-icon">📋</div>
+      <div>
+        <div class="audit-title">Empirical Audit Report</div>
+        <div class="audit-desc">
+          Generates a quantitative Markdown report from live VictoriaMetrics data.
+          Evaluates P99 I/O latency against the 10ms threshold and produces an
+          architectural verdict with upgrade recommendations.
+        </div>
+      </div>
+    </div>
+    <button class="audit-btn" on:click={generateAudit} disabled={auditLoading}>
+      {#if auditLoading}
+        <span class="spinner"></span> Generating…
+      {:else}
+        ⚡ Generate Empirical Audit
+      {/if}
+    </button>
+  </div>
+
+  <!-- Audit modal -->
+  {#if showModal}
+    <div class="modal-backdrop" on:click|self={() => showModal = false} role="dialog" aria-modal="true">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">📋 Audit Report — {new Date().toLocaleDateString('en-GB')}</span>
+          <div class="modal-actions">
+            {#if auditMarkdown}
+              <button class="modal-btn-dl" on:click={downloadMarkdown}>⬇ Download .md</button>
+            {/if}
+            <button class="modal-btn-close" on:click={() => showModal = false}>✕ Close</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          {#if auditError}
+            <pre class="modal-error">{auditError}</pre>
+          {:else}
+            <pre class="modal-content">{auditMarkdown}</pre>
+          {/if}
+        </div>
+      </div>
+    </div>
+  {/if}
   <div class="info-bar">
     <div class="info-item">
       <span class="info-label">Hardware</span>
@@ -244,4 +324,141 @@
     text-transform: uppercase; color: #1e3a5f;
   }
   .info-value { font-size: 0.78rem; color: #475569; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Audit card ─────────────────────────────────────────────────────── */
+  .audit-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.25rem 1.75rem;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 0 24px rgba(56, 189, 248, 0.05);
+  }
+
+  .audit-left { display: flex; align-items: flex-start; gap: 1rem; }
+  .audit-icon  { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+  .audit-title { font-size: 1.05rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.3rem; }
+  .audit-desc  { font-size: 0.8rem; color: #64748b; line-height: 1.55; max-width: 560px; }
+
+  .audit-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #0f172a;
+    background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    white-space: nowrap;
+  }
+  .audit-btn:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-2px);
+    box-shadow: 0 0 32px rgba(56, 189, 248, 0.5);
+  }
+  .audit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+  /* Spinner */
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(15, 23, 42, 0.4);
+    border-top-color: #0f172a;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Audit modal ─────────────────────────────────────────────────────── */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 860px;
+    max-height: 85dvh;
+    background: #0d1828;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 16px;
+    box-shadow: 0 0 80px rgba(56, 189, 248, 0.12), 0 24px 64px rgba(0,0,0,0.8);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    flex-shrink: 0;
+  }
+
+  .modal-title { font-size: 1rem; font-weight: 700; color: #e2e8f0; }
+
+  .modal-actions { display: flex; gap: 0.5rem; }
+
+  .modal-btn-dl {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 0.78rem; font-weight: 600;
+    padding: 0.4rem 0.85rem; border-radius: 6px;
+    border: 1px solid rgba(52,211,153,0.3);
+    background: rgba(52,211,153,0.08); color: #34d399;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .modal-btn-dl:hover { background: rgba(52,211,153,0.15); }
+
+  .modal-btn-close {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 0.78rem; font-weight: 600;
+    padding: 0.4rem 0.85rem; border-radius: 6px;
+    border: 1px solid rgba(51,65,85,0.5);
+    background: rgba(51,65,85,0.2); color: #94a3b8;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .modal-btn-close:hover { background: rgba(51,65,85,0.4); }
+
+  .modal-body { overflow-y: auto; padding: 1.5rem; flex: 1; }
+
+  .modal-content {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.75;
+    color: #94a3b8;
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 0;
+  }
+
+  .modal-error {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: #f87171;
+    background: rgba(248,113,113,0.06);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    white-space: pre-wrap;
+    margin: 0;
+  }
 </style>

@@ -76,3 +76,4 @@ auditor/*$py.class
 auditor/.pytest_cache/
 auditor/audit_report.md
 testfile
+config.yaml

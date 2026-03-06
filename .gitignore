@@ -81,3 +81,5 @@ backend/server
 agent/net_tcp_x86_bpfel.o
 hqud-agent
 hqud-server
+dist/
+*.tar.gz

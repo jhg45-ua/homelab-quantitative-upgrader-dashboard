@@ -21,16 +21,19 @@ import (
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 net_tcp bpf/net_tcp.c
 
 type Config struct {
-	NodeName string `yaml:"node_name"`
-	Specs    struct {
+	Agent struct {
+		NodeName string `yaml:"node_name"`
+	} `yaml:"agent"`
+	HardwareLimits struct {
 		Cores        int     `yaml:"cores"`
-		PeakGflops   float64 `yaml:"peak_gflops"`
+		PeakMips     float64 `yaml:"peak_mips"`
 		MaxMemBwGbps float64 `yaml:"max_mem_bw_gbps"`
-	} `yaml:"specs"`
+	} `yaml:"hardware_limits"`
 	Ipmi struct {
-		Host string `yaml:"host"`
-		User string `yaml:"user"`
-		Pass string `yaml:"pass"`
+		Enabled bool   `yaml:"enabled"`
+		Host    string `yaml:"host"`
+		User    string `yaml:"user"`
+		Pass    string `yaml:"pass"`
 	} `yaml:"ipmi"`
 }
 
@@ -57,7 +60,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load config.yaml (tried ./config.yaml and ../config.yaml): %v", err)
 	}
-	log.Printf("Config loaded successfully for Target Node: %s", cfg.NodeName)
+	log.Printf("Config loaded successfully for Target Node: %s", cfg.Agent.NodeName)
 
 	if err := rlimit.RemoveMemlock(); err != nil {
 		log.Fatalf("Failed to remove memlock limit: %v", err)
@@ -169,7 +172,7 @@ func main() {
 				metrics = append(metrics, tsdb.Metric{
 					Name: "hqud_io_latency_usec_bucket",
 					Labels: map[string]string{
-						"host":   cfg.NodeName,
+						"host":   cfg.Agent.NodeName,
 						"modulo": "ebpf_io",
 						"le":     leTag,
 					},
@@ -235,25 +238,25 @@ func main() {
 			pmuMetrics := []tsdb.Metric{
 				{
 					Name:      "hqud_cpu_cpi",
-					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_pmu"},
 					Value:     cpi,
 					Timestamp: now,
 				},
 				{
 					Name:      "hqud_cpu_cache_miss_rate",
-					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_pmu"},
 					Value:     cacheMissRate,
 					Timestamp: now,
 				},
 				{
 					Name:      "hqud_cpu_amat_cycles",
-					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "quantitative_engine"},
 					Value:     amat,
 					Timestamp: now,
 				},
 				{
 					Name:      "hqud_os_context_switches_ps",
-					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_pmu"},
 					Value:     ctxSwitchesPS,
 					Timestamp: now,
 				},
@@ -279,13 +282,13 @@ func main() {
 				powerMetrics := []tsdb.Metric{
 					{
 						Name:      "hqud_power_watts",
-						Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ipmi_oob"},
+						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ipmi_oob"},
 						Value:     watts,
 						Timestamp: now,
 					},
 					{
 						Name:      "hqud_efficiency_ips_per_watt",
-						Labels:    map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
+						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "quantitative_engine"},
 						Value:     efficiency,
 						Timestamp: now,
 					},
@@ -310,7 +313,7 @@ func main() {
 			go func(v float64) {
 				if err := tsdbClient.Push([]tsdb.Metric{{
 					Name:      "hqud_numa_miss_rate",
-					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "numa_sysfs"},
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
 					Value:     v,
 					Timestamp: now,
 				}}); err != nil {
@@ -332,7 +335,7 @@ func main() {
 				go func(v float64) {
 					if err := tsdbClient.Push([]tsdb.Metric{{
 						Name:      "hqud_net_tcp_retransmits_ps",
-						Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_tcp"},
+						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_tcp"},
 						Value:     v,
 						Timestamp: now,
 					}}); err != nil {

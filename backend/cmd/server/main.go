@@ -25,19 +25,26 @@ import (
 
 // ── Config struct  ──────────────────────────────────────────────────────────
 
+type RawYamlConfig struct {
+	Agent struct {
+		NodeName     string `yaml:"node_name"`
+		HardwareDesc string `yaml:"hardware_desc"`
+	} `yaml:"agent"`
+	HardwareLimits struct {
+		Cores        int     `yaml:"cores"`
+		PeakMips     float64 `yaml:"peak_mips"`
+		MaxMemBwGbps float64 `yaml:"max_mem_bw_gbps"`
+	} `yaml:"hardware_limits"`
+}
+
 type HardwareConfig struct {
-	NodeName     string `yaml:"node_name"     json:"node_name"`
-	HardwareDesc string `yaml:"hardware_desc" json:"hardware_desc"`
+	NodeName     string `json:"node_name"`
+	HardwareDesc string `json:"hardware_desc"`
 	Specs        struct {
-		Cores        int     `yaml:"cores"           json:"cores"`
-		PeakMips     float64 `yaml:"peak_mips"       json:"peak_mips"`
-		MaxMemBwGbps float64 `yaml:"max_mem_bw_gbps" json:"max_mem_bw_gbps"`
-	} `yaml:"specs" json:"specs"`
-	Ipmi struct {
-		Host string `yaml:"host" json:"host"`
-		User string `yaml:"user" json:"-"` // never expose user/pass
-		Pass string `yaml:"pass" json:"-"`
-	} `yaml:"ipmi" json:"ipmi"`
+		Cores        int     `json:"cores"`
+		PeakMips     float64 `json:"peak_mips"`
+		MaxMemBwGbps float64 `json:"max_mem_bw_gbps"`
+	} `json:"specs"`
 }
 
 // ── Path helpers ────────────────────────────────────────────────────────────
@@ -162,13 +169,19 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 
 func main() {
 	// Parse config.yaml at startup
+	var raw RawYamlConfig
 	configData, err := os.ReadFile(configPath())
 	if err != nil {
 		log.Printf("[WARN] Cannot read config.yaml at startup: %v", err)
 	} else {
-		if err := yaml.Unmarshal(configData, &globalConfig); err != nil {
+		if err := yaml.Unmarshal(configData, &raw); err != nil {
 			log.Printf("[WARN] Cannot parse config.yaml: %v", err)
 		} else {
+			globalConfig.NodeName = raw.Agent.NodeName
+			globalConfig.HardwareDesc = raw.Agent.HardwareDesc
+			globalConfig.Specs.Cores = raw.HardwareLimits.Cores
+			globalConfig.Specs.PeakMips = raw.HardwareLimits.PeakMips
+			globalConfig.Specs.MaxMemBwGbps = raw.HardwareLimits.MaxMemBwGbps
 			log.Printf("[hqud-server] Loaded config for node: %s", globalConfig.NodeName)
 		}
 	}

@@ -30,7 +30,8 @@ func (c *Collector) ReadPowerWatts() (float64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "ipmitool", "-I", "lanplus", "-H", c.Host, "-U", c.User, "-P", c.Pass, "dcmi", "power", "reading")
+	// Execute ipmitool natively on the local baremetal node to avoid iDRAC LAN session exhaustion
+	cmd := exec.CommandContext(ctx, "ipmitool", "dcmi", "power", "reading")
 	output, err := cmd.Output()
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {

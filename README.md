@@ -23,28 +23,31 @@ Instead of relying on superficial metrics like "overall CPU usage (%)", HQUD app
 
 Get HQUD up and running in 4 simple commands:
 
-### 1. Configure the Environment
-Copy the example configuration and input your hardware specifications (used by the mathematics engine to calculate theoretical limits).
+### 1. Download the Release
+Download the pre-compiled `.tar.gz` package from the [Releases](https://github.com/jhg45-ua/homelab-quantitative-upgrader-dashboard/releases) tab. This package includes the static SPA frontend, the Go web backend, and the eBPF agent binaries. There is no need to install Go, Node.js, or any compiler!
+
+### 2. Extract the Package
+Unzip the downloaded platform into a fresh directory on your server:
 ```bash
-cp config.example.yaml config.yaml
-# Edit config.yaml with your specific hardware details
+mkdir hqud && cd hqud
+tar -xzvf ../hqud-linux-amd64.tar.gz
 ```
 
-### 2. Build the Platform
-Compiles the static SPA frontend, the Go web backend, and the eBPF agent binaries.
+### 3. Configure the Environment
+Input your local hardware specifications (used by the mathematics engine to calculate theoretical limits).
 ```bash
-make build
+# Edit the provided config.yaml with your specific hardware details
+nano config.yaml
 ```
 
-### 3. Start the Services
-Spins up VictoriaMetrics (TSDB) via Docker Compose and launches the Go server in the background.
+### 4. Start the Platform
+Spin up VictoriaMetrics (TSDB) via Docker Compose and launch the services.
 ```bash
 make start
 ```
 > 🌐 **Access the Dashboard:** [http://localhost:8080](http://localhost:8080)
 
-### 4. Run the Agent
-Executes the eBPF data collection probes (requires `sudo` for kernel hook access).
+To execute the eBPF data collection probes (requires `sudo` for kernel hook access):
 ```bash
 make agent
 ```

@@ -1,4 +1,4 @@
-.PHONY: build start agent stop wipe-data clean
+.PHONY: build start agent stop wipe-data clean release-pkg
 
 build:
 	@echo "==> Building Frontend (SPA)..."
@@ -33,5 +33,22 @@ wipe-data: stop
 
 clean:
 	@echo "==> Cleaning generated files..."
-	rm -rf hqud-server hqud-agent server.log frontend/build agent/*_bpfel.*
+	rm -rf hqud-server hqud-agent server.log frontend/build agent/*_bpfel.* dist hqud-linux-amd64.tar.gz
 	@echo "Limpieza completada."
+
+release-pkg: clean
+	@echo "==> Preparing Release Package..."
+	mkdir -p dist
+	@echo "==> Building Frontend (SPA)..."
+	cd frontend && npm install && npm run build
+	@echo "==> Building Go Backend..."
+	cd backend/cmd/server && GOOS=linux GOARCH=amd64 go build -o ../../../dist/hqud-server main.go
+	@echo "==> Building eBPF Agent..."
+	cd agent && go generate ./... && GOOS=linux GOARCH=amd64 go build -o ../dist/hqud-agent .
+	@echo "==> Assembling distribution files..."
+	cp docker-compose.yml dist/
+	cp config.example.yaml dist/config.yaml
+	cp Makefile.run dist/Makefile
+	@echo "==> Compressing package..."
+	tar -czvf hqud-linux-amd64.tar.gz -C dist .
+	@echo "Paquete hqud-linux-amd64.tar.gz generado con éxito."

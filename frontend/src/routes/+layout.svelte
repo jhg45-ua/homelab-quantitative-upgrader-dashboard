@@ -1,5 +1,8 @@
 <script lang="ts">
   import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { loadHardwareConfig, hwConfig } from '$lib/hwConfig';
+
   $: currentPath = $page.url.pathname;
 
   const links = [
@@ -7,6 +10,8 @@
     { href: '/advanced', label: 'Scientific Deep Dive' },
     { href: '/methodology', label: 'Methodology' }
   ];
+
+  onMount(() => { loadHardwareConfig(); });
 </script>
 
 <svelte:head>
@@ -18,6 +23,7 @@
   <nav class="navbar">
     <a href="/" class="navbar-logo">
       <span class="bracket">[</span>HQUD<span class="bracket">]</span>
+      <span class="node-badge">{$hwConfig.node_name}</span>
     </a>
     <div class="navbar-links">
       {#each links as link}
@@ -57,9 +63,24 @@
     text-decoration: none;
     letter-spacing: 0.06em;
     transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
   }
   .navbar-logo:hover { color: #7dd3fc; }
   .bracket { color: #334155; font-weight: 300; }
+
+  .node-badge {
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: #475569;
+    background: rgba(51, 65, 85, 0.3);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(51, 65, 85, 0.4);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
 
   .navbar-links { display: flex; align-items: center; gap: 0.25rem; }
 

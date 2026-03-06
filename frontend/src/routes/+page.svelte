@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { hwConfig } from '$lib/hwConfig';
 
   const VM = '/api/vm/api/v1/query';
 
@@ -63,12 +64,13 @@
   };
 
   async function fetchData() {
+    const node = $hwConfig.node_name;
     try {
       const [cpiD, amatD, p99D, tcpD] = await Promise.all([
-        fetch(`${VM}?query=hqud_cpu_cpi{host="r720-vm"}`).then(r => r.json()),
-        fetch(`${VM}?query=hqud_cpu_amat_cycles{host="r720-vm"}`).then(r => r.json()),
-        fetch(`${VM}?query=${encodeURIComponent('histogram_quantile(0.99, sum(rate(hqud_io_latency_usec_bucket{host="r720-vm"}[5m])) by (le))')}`).then(r => r.json()),
-        fetch(`${VM}?query=hqud_net_tcp_retransmits_ps{host="r720-vm"}`).then(r => r.json()),
+        fetch(`${VM}?query=hqud_cpu_cpi{host="${node}"}`).then(r => r.json()),
+        fetch(`${VM}?query=hqud_cpu_amat_cycles{host="${node}"}`).then(r => r.json()),
+        fetch(`${VM}?query=${encodeURIComponent(`histogram_quantile(0.99, sum(rate(hqud_io_latency_usec_bucket{host="${node}"}[5m])) by (le))`)}`).then(r => r.json()),
+        fetch(`${VM}?query=hqud_net_tcp_retransmits_ps{host="${node}"}`).then(r => r.json()),
       ]);
 
       const updated = [...cards];
@@ -223,7 +225,7 @@
   <div class="info-bar">
     <div class="info-item">
       <span class="info-label">Hardware</span>
-      <span class="info-value">Dell R720 · 2× Xeon E5-2690 v2 · 16 cores · 96 GB ECC</span>
+      <span class="info-value">{$hwConfig.hardware_desc}</span>
     </div>
     <div class="info-item">
       <span class="info-label">Collectors</span>

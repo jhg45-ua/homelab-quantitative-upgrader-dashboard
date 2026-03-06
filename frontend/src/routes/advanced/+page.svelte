@@ -4,6 +4,7 @@
   import CPIChart from '$lib/CPIChart.svelte';
   import MemoryOSChart from '$lib/MemoryOSChart.svelte';
   import RooflineChart from '$lib/RooflineChart.svelte';
+  import { hwConfig } from '$lib/hwConfig';
 
   let powerWatts = "---";
   let efficiencyIpsW = "---";
@@ -18,13 +19,14 @@
   const VM = '/api/vm/api/v1/query';
 
   async function fetchScalars() {
+    const node = $hwConfig.node_name;
     try {
       const [pmRes, effRes, amatRes, numaRes, tcpRes] = await Promise.all([
-        fetch(`${VM}?query=hqud_power_watts{host="r720-vm"}`),
-        fetch(`${VM}?query=hqud_efficiency_ips_per_watt{host="r720-vm"}`),
-        fetch(`${VM}?query=hqud_cpu_amat_cycles{host="r720-vm"}`),
-        fetch(`${VM}?query=hqud_numa_miss_rate{host="r720-vm"}`),
-        fetch(`${VM}?query=hqud_net_tcp_retransmits_ps{host="r720-vm"}`)
+        fetch(`${VM}?query=hqud_power_watts{host="${node}"}`),
+        fetch(`${VM}?query=hqud_efficiency_ips_per_watt{host="${node}"}`),
+        fetch(`${VM}?query=hqud_cpu_amat_cycles{host="${node}"}`),
+        fetch(`${VM}?query=hqud_numa_miss_rate{host="${node}"}`),
+        fetch(`${VM}?query=hqud_net_tcp_retransmits_ps{host="${node}"}`)
       ]);
       const pmd  = await pmRes.json();
       const effd = await effRes.json();
@@ -63,8 +65,8 @@
   <div class="hud-grid">
     <div class="metric-card">
       <div class="metric-label">Target Node</div>
-      <div class="metric-value accent">r720-vm</div>
-      <div class="metric-sub">Dell PowerEdge R720</div>
+      <div class="metric-value accent">{$hwConfig.node_name}</div>
+      <div class="metric-sub">{$hwConfig.hardware_desc}</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Active Power</div>

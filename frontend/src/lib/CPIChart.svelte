@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import * as echarts from 'echarts';
+  import { hwConfig } from '$lib/hwConfig';
 
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
@@ -8,7 +10,7 @@
   let ro: ResizeObserver;
 
   const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
-  const PROMQL_QUERY = `hqud_cpu_cpi{host="r720-vm"}`;
+  function getPromQL() { return `hqud_cpu_cpi{host="${get(hwConfig).node_name}"}`; }
 
   onMount(async () => {
     chart = echarts.init(chartContainer);
@@ -107,7 +109,7 @@
       const step = 5;
 
       const response = await fetch(
-        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(PROMQL_QUERY)}&start=${start}&end=${now}&step=${step}`
+        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(getPromQL())}&start=${start}&end=${now}&step=${step}`
       );
       
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

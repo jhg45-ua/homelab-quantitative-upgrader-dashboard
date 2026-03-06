@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import * as echarts from 'echarts';
+  import { hwConfig } from '$lib/hwConfig';
 
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
@@ -8,8 +10,8 @@
   let ro: ResizeObserver;
 
   const VM_URL = '/api/vm/api/v1/query_range';
-  const CACHE_MISS_QUERY = `hqud_cpu_cache_miss_rate{host="r720-vm"}`;
-  const CTX_SWITCH_QUERY = `hqud_os_context_switches_ps{host="r720-vm"}`;
+  function getCacheMissQuery() { return `hqud_cpu_cache_miss_rate{host="${get(hwConfig).node_name}"}`; }
+  function getCtxSwitchQuery() { return `hqud_os_context_switches_ps{host="${get(hwConfig).node_name}"}`; }
 
   onMount(async () => {
     chart = echarts.init(chartContainer);
@@ -133,8 +135,8 @@
   async function fetchData() {
     try {
       const [cacheMissVals, ctxVals] = await Promise.all([
-        fetchRange(CACHE_MISS_QUERY),
-        fetchRange(CTX_SWITCH_QUERY)
+        fetchRange(getCacheMissQuery()),
+        fetchRange(getCtxSwitchQuery())
       ]);
 
       if (!cacheMissVals && !ctxVals) return;

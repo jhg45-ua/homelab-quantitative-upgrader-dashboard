@@ -1,12 +1,13 @@
-// Module E — Audit HTTP Server
-// Listens on :8082 and exposes GET /api/generate-audit
-//
-// It executes the Python auditor script, reads the resulting Markdown,
-// and returns it to the caller. The SvelteKit Vite dev-server proxies
-// /api/generate-audit → http://localhost:8082.
+// HQUD Backend HTTP Server
+// Listens on :8082
+// Endpoints:
+//   GET /api/generate-audit  — runs Python auditor, returns Markdown
+//   GET /api/hardware        — returns parsed config.yaml as JSON
+//   GET /api/health          — health check
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,20 +15,63 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"gopkg.in/yaml.v3"
 )
 
-// auditorDir returns the absolute path to the auditor/ directory,
-// resolved from this binary's location so it works from any CWD.
-func auditorDir() string {
+// ── Config struct  ──────────────────────────────────────────────────────────
+
+type HardwareConfig struct {
+	NodeName     string `yaml:"node_name"     json:"node_name"`
+	HardwareDesc string `yaml:"hardware_desc" json:"hardware_desc"`
+	Specs        struct {
+		Cores         int     `yaml:"cores"           json:"cores"`
+		PeakMips      float64 `yaml:"peak_mips"       json:"peak_mips"`
+		MaxMemBwGbps  float64 `yaml:"max_mem_bw_gbps" json:"max_mem_bw_gbps"`
+	} `yaml:"specs" json:"specs"`
+	Ipmi struct {
+		Host string `yaml:"host" json:"host"`
+		User string `yaml:"user" json:"-"` // never expose user/pass
+		Pass string `yaml:"pass" json:"-"`
+	} `yaml:"ipmi" json:"ipmi"`
+}
+
+// ── Path helpers ────────────────────────────────────────────────────────────
+
+func projectRoot() string {
 	_, filename, _, _ := runtime.Caller(0)
-	// backend/cmd/server/main.go → up 3 levels → project root → auditor/
 	root := filepath.Join(filepath.Dir(filename), "..", "..", "..")
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		log.Fatalf("Cannot resolve project root: %v", err)
 	}
-	return filepath.Join(abs, "auditor")
+	return abs
 }
+
+func auditorDir() string { return filepath.Join(projectRoot(), "auditor") }
+func configPath() string { return filepath.Join(projectRoot(), "config.yaml") }
+
+// ── /api/hardware ───────────────────────────────────────────────────────────
+
+func handleHardware(w http.ResponseWriter, r *http.Request) {
+	data, err := os.ReadFile(configPath())
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Cannot read config.yaml: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var cfg HardwareConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		http.Error(w, fmt.Sprintf("Cannot parse config.yaml: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(cfg)
+}
+
+// ── /api/generate-audit ─────────────────────────────────────────────────────
 
 func handleGenerateAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -38,10 +82,9 @@ func handleGenerateAudit(w http.ResponseWriter, r *http.Request) {
 	dir := auditorDir()
 	log.Printf("[audit] Running Python script in dir: %s", dir)
 
-	// Prefer the venv interpreter so jinja2/requests are available
 	pythonBin := filepath.Join(dir, "venv", "bin", "python3")
 	if _, err := os.Stat(pythonBin); err != nil {
-		pythonBin = "python3" // fall back to system python
+		pythonBin = "python3"
 	}
 
 	cmd := exec.Command(pythonBin, "generate_report.py")
@@ -71,11 +114,12 @@ func handleGenerateAudit(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[audit] Report served successfully (%d bytes)", len(content))
 }
 
+// ── main ────────────────────────────────────────────────────────────────────
+
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/generate-audit", handleGenerateAudit)
-
-	// Health check for Vite proxy probe
+	mux.HandleFunc("/api/hardware", handleHardware)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"status":"ok","service":"hqud-audit-server"}`)

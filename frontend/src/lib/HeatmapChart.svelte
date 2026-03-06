@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import * as echarts from 'echarts';
+  import { hwConfig } from '$lib/hwConfig';
 
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
@@ -8,9 +10,11 @@
   let ro: ResizeObserver;
 
   const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
-  
-  // The rate at which the eBPF agent buckets fill over 1 minute
-  const PROMQL_QUERY = `sum(rate(hqud_io_latency_usec_bucket{host="r720-vm"}[1m])) by (le)`;
+
+  function getPromQL() {
+    const node = get(hwConfig).node_name;
+    return `sum(rate(hqud_io_latency_usec_bucket{host="${node}"}[1m])) by (le)`;
+  }
 
   onMount(async () => {
     chart = echarts.init(chartContainer);
@@ -106,7 +110,7 @@
       const step = 5; // 5 second resolution
 
       const response = await fetch(
-        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(PROMQL_QUERY)}&start=${start}&end=${now}&step=${step}`
+        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(getPromQL())}&start=${start}&end=${now}&step=${step}`
       );
       
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

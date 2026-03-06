@@ -2,11 +2,29 @@ import requests
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime, timezone
 import sys
+import os
+
+# ── Read config.yaml ─────────────────────────────────────────────────────────
+try:
+    import yaml
+except ImportError:
+    print("[WARN] PyYAML not installed, using defaults", file=sys.stderr)
+    yaml = None
+
+def load_config():
+    """Read config.yaml from the project root (one level up from auditor/)."""
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'config.yaml')
+    if yaml and os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return yaml.safe_load(f)
+    return {}
+
+_cfg = load_config()
 
 # ── Configuration ────────────────────────────────────────────────────────────
 VM_URL = "http://localhost:8428/api/v1/query"
-TARGET_NODE = "r720-vm"
-HARDWARE = "Dell PowerEdge R720 · 2× Intel Xeon E5-2690 v2 (IvyBridge-EP) · 96 GB DDR3 ECC"
+TARGET_NODE = _cfg.get("node_name", "unknown-node")
+HARDWARE = _cfg.get("hardware_desc", "Unknown Hardware")
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
 THRESHOLDS = {

@@ -14,6 +14,10 @@ export default defineConfig({
 				target: 'http://localhost:8082',
 				changeOrigin: true
 			},
+			'/api/hardware': {
+				target: 'http://localhost:8082',
+				changeOrigin: true
+			},
 			'/api/health': {
 				target: 'http://localhost:8082',
 				changeOrigin: true

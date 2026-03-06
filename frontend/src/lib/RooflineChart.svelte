@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { hwConfig } from '$lib/hwConfig';
   import * as echarts from 'echarts';
 
   let chartContainer: HTMLDivElement;
@@ -9,21 +10,24 @@
 
   const VM = '/api/vm/api/v1/query';
 
-  // ── Dell R720 E5-2690 v2 theoretical limits ──────────────────────────
-  // Peak compute: 2 sockets × 10 cores × 3.0 GHz × 2 IPC ≈ 120,000 MIPS
-  const PEAK_MIPS = 120000;
-  // Peak memory bandwidth: 4 channels × 14.9 GB/s per channel ≈ 59.7 GB/s
-  const PEAK_BW_GBS = 59.7;
-
   onMount(async () => {
     chart = echarts.init(chartContainer);
     ro = new ResizeObserver(() => { if (chart) chart.resize(); });
     ro.observe(chartContainer);
 
-    // ── Build the Roofline envelope ──────────────────────────────────────
+    buildChart();
+    await fetchData();
+    interval = setInterval(fetchData, 5000);
+  });
+
+  // Rebuild whenever config changes (store subscription via $: reactive)
+  $: if (chart && $hwConfig) buildChart();
+
+  function buildChart() {
+    const PEAK_MIPS = $hwConfig.specs.peak_mips || 120000;
+    const PEAK_BW_GBS = $hwConfig.specs.max_mem_bw_gbps || 59.7;
+
     // Ridge point: where memory ceiling meets compute ceiling
-    // Ridge OI = Peak_MIPS / (Peak_BW_GB/s × 1e9 / 64 bytes per cacheline)
-    // For marking: OI where BW line reaches PEAK_MIPS
     const ridgeOI = PEAK_MIPS / (PEAK_BW_GBS * 1e9 / 64 / 1e6);
 
     // Memory bandwidth roof: MIPS = OI × BW (bytes/s) / 64 / 1e6
@@ -42,7 +46,7 @@
     chart.setOption({
       title: {
         text: 'Roofline Model',
-        subtext: 'E5-2690 v2 · Hennessy & Patterson Ch.4',
+        subtext: `${$hwConfig.hardware_desc || 'Unknown'} · H&P Ch.4`,
         textStyle: { color: '#f1f5f9', fontSize: 14, fontFamily: 'Space Grotesk' },
         subtextStyle: { color: '#64748b', fontSize: 11 },
         top: 8
@@ -120,11 +124,8 @@
         }
       ],
       backgroundColor: 'transparent'
-    });
-
-    await fetchData();
-    interval = setInterval(fetchData, 5000);
-  });
+    }, true); // true = notMerge, forces full rebuild
+  }
 
   onDestroy(() => {
     if (ro) ro.disconnect();
@@ -133,19 +134,17 @@
   });
 
   async function fetchData() {
+    const node = $hwConfig.node_name;
     try {
       const [instR, missR] = await Promise.all([
-        fetch(`${VM}?query=hqud_cpu_cpi{host="r720-vm"}`).then(r => r.json()),
-        fetch(`${VM}?query=hqud_cpu_cache_miss_rate{host="r720-vm"}`).then(r => r.json()),
+        fetch(`${VM}?query=hqud_cpu_cpi{host="${node}"}`).then(r => r.json()),
+        fetch(`${VM}?query=hqud_cpu_cache_miss_rate{host="${node}"}`).then(r => r.json()),
       ]);
 
-      // We need per-second instruction rate — derive from CPI and efficiency
-      const effR = await fetch(`${VM}?query=hqud_efficiency_ips_per_watt{host="r720-vm"}`).then(r => r.json());
-      const powerR = await fetch(`${VM}?query=hqud_power_watts{host="r720-vm"}`).then(r => r.json());
+      const effR = await fetch(`${VM}?query=hqud_efficiency_ips_per_watt{host="${node}"}`).then(r => r.json());
+      const powerR = await fetch(`${VM}?query=hqud_power_watts{host="${node}"}`).then(r => r.json());
 
-      // Get CPI and cache miss rate
-      let cpi = 0, missRate = 0, ips = 0;
-
+      let cpi = 0, missRate = 0;
       if (instR.status === 'success' && instR.data.result.length > 0) {
         cpi = parseFloat(instR.data.result[0].value[1]);
       }
@@ -153,7 +152,6 @@
         missRate = parseFloat(missR.data.result[0].value[1]);
       }
 
-      // IPS = efficiency × power
       let eff = 0, watts = 0;
       if (effR.status === 'success' && effR.data.result.length > 0) {
         eff = parseFloat(effR.data.result[0].value[1]);
@@ -161,13 +159,10 @@
       if (powerR.status === 'success' && powerR.data.result.length > 0) {
         watts = parseFloat(powerR.data.result[0].value[1]);
       }
-      ips = eff * watts; // instructions per second
+      const ips = eff * watts;
 
       if (ips <= 0 || missRate <= 0) return;
 
-      // Operational Intensity = Instructions / (CacheMisses × 64 bytes)
-      // CacheMisses = missRate/100 × CacheRefs
-      // Proxy: OI ≈ 100 / missRate (higher miss → lower OI)
       const oi = 100.0 / missRate;
       const mips = ips / 1e6;
 

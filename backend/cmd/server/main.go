@@ -141,6 +141,18 @@ func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
 }
 
+// ── Middleware ──────────────────────────────────────────────────────────────
+
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		next.ServeHTTP(w, r)
+	})
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 func main() {
@@ -156,8 +168,17 @@ func main() {
 	mux.Handle("/", spa)
 
 	addr := ":8080"
-	log.Printf("[hqud-server] Listening on http://0.0.0.0%s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      securityHeadersMiddleware(mux),
+		ReadTimeout:  10 * time.Second,  // Prevents Slowloris attacks
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	log.Printf("[hqud-server] Listening securely on http://0.0.0.0%s", addr)
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("[hqud-server] Fatal: %v", err)
 	}
 }

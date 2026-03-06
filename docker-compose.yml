@@ -3,7 +3,7 @@ services:
     image: victoriametrics/victoria-metrics:latest
     container_name: hqud-victoriametrics
     ports:
-      - "8428:8428"
+      - "127.0.0.1:8428:8428"
     networks:
       - hqud_net
     restart: unless-stopped

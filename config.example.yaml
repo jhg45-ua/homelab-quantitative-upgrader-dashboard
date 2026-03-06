@@ -1,0 +1,10 @@
+node_name: "(Your Node Name)"
+hardware_desc: "(Short description, e.g., Dell R720)"
+specs:
+  cores: 16
+  peak_mips: 154000
+  max_mem_bw_gbps: 51.2
+ipmi:
+  host: "192.168.1.100"
+  user: "admin"
+  pass: "super_secret_password"

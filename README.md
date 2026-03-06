@@ -1,72 +1,78 @@
-# HomeLab Quantitative Upgrader Dashboard (HQUD)
+<div align="center">
+  <h1>📈 HomeLab Quantitative Upgrader Dashboard (HQUD)</h1>
+  <p><b>An ultra-lightweight, mathematically-driven hardware auditing and empirical analysis platform.</b></p>
+</div>
 
-**Release v1.0**: HQUD is now an extremely lightweight platform. It operates as a strict Single Page Application (SPA) served directly by an ultralight Go binary—**no Node.js required in production!** 
+HQUD is a comprehensive monitoring and hardware auditing platform designed specifically for HomeLab environments (e.g., Proxmox, Ubuntu). 
 
-## Quickstart (v1.0)
-
-1. **Configure Environment:** Edit `config.yaml` with your hardware specifics.
-2. **Build the Platform:** 
-   ```bash
-   make build
-   ```
-   *(Compiles the static frontend, Go backend, and eBPF agent)*
-3. **Start the Services:** 
-   ```bash
-   make start
-   ```
-   *(Spins up VictoriaMetrics via Docker and launches the Go server in the background. Access the web interface at `http://localhost:8080`)*
-4. **Run the Agent:** 
-   ```bash
-   make agent
-   ```
-   *(Executes the eBPF data collection probes with sudo privileges)*
-
-### Data Management
-
-To reset the environment and clear all empirical data, use the new wipe command:
-```bash
-make wipe-data
-```
-*(This gracefully stops the backend and database, deletes `./data/tsdb`, and restores an empty data state. You will see the confirmation: "Datos empíricos borrados con éxito. El sistema está limpio.").*
+Instead of relying on superficial metrics like "overall CPU usage (%)", HQUD applies strictly mathematical formulas from *Hennessy & Patterson's "Computer Architecture: A Quantitative Approach"* to deliver justified, quantifiable verdicts on whether your hardware actually needs an upgrade.
 
 ---
 
-## 1. PROJECT OBJECTIVE
-Monitoring, empirical analysis, and hardware auditing platform for a HomeLab environment (Proxmox/Ubuntu). It mathematically quantifies the impact of workloads and generates justified verdicts on hardware upgrades based on the book "Computer Architecture: A Quantitative Approach" (Hennessy & Patterson).
+## ✨ Features
 
-## 2. DESIGN PRINCIPLES
-- **Abstraction:** 5 independent microservices (Modules A-E).
-- **Agnosticism:** Modular interfaces. Compatible with IPMI 2.0 (Dell R720) and standard eBPF.
-- **Mathematical Approach:** Strict use of computer architecture formulas. The use of superficial metrics like "global CPU percentage" is strictly prohibited.
+- **🛡️ Ultra-Lightweight (v1.0)**: HQUD operates as a strict Single Page Application (SPA). The SvelteKit frontend is served directly by a highly optimized, compiled Go binary. **There is no Node.js requirement in production.**
+- **🧮 Empirical & Mathematical**: Evaluates system performance using real computer architecture pillars: Cycles Per Instruction (CPI), Average Memory Access Time (AMAT), Little's Law, and the Roofline Model.
+- **🚀 Bare-Metal Probing**: Built with eBPF and Go (CO-RE) for zero-overhead, hyper-accurate sensory extraction directly from the Linux kernel and hardware PMUs.
+- **📊 Scientific Visualizations**: Modern, interactive UI featuring Roofline Charts, Latency Heatmaps, and Queue Saturation Dashboards powered by SvelteKit and ECharts.
+- **🔐 Secure by Default**: Includes strict HTTP security headers, timeout mitigations against Slowloris, and loopback-network isolation for the time-series database.
 
-## 3. LAYERED ARCHITECTURE AND MATHEMATICS
+---
 
-### Module A: Sensory Extraction (eBPF/Go Agent)
-Low-impact probes operating on the bare-metal host.
-- **Kernel (eBPF):** Context Switches, Run Queue latencies, Block I/O.
-- **Hardware (PMU):** Instructions, cycles, L1/L2/LLC misses.
-- **OOB/RAS (IPMI):** Watts, temperatures, ECC/SMART errors.
+## 🚀 Quickstart (Production Build)
 
-### Module B: Storage (VictoriaMetrics TSDB)
-Time-series database with multidimensional labeling (e.g., `node=r720`, `socket=1`, `numa=1`, `vm_id=105`).
+Get HQUD up and running in 4 simple commands:
 
-### Module C: Quantitative Engine (Go Backend)
-Applies the following physical and mathematical laws to the raw data:
+### 1. Configure the Environment
+Copy the example configuration and input your hardware specifications (used by the mathematics engine to calculate theoretical limits).
+```bash
+cp config.example.yaml config.yaml
+# Edit config.yaml with your specific hardware details
+```
 
-- **Efficiency (Actual CPI):**
-  $$CPI = \frac{\Delta \text{Total CPU Cycles}}{\Delta \text{Executed Instructions}}$$
-- **Memory Penalty (AMAT):**
-  $$AMAT = \text{L1 Hit Time} + (\text{L1 Miss Rate} \times \text{L1 Miss Penalty})$$
-- **Amdahl's Law (Scalability Limits):**
-  $$\text{Speedup} = \frac{1}{(1 - \text{Parallelizable Fraction}) + \frac{\text{Parallelizable Fraction}}{\text{N Cores}}}$$
-- **Roofline Model:**
-  $$\text{Operational Intensity} = \frac{\text{Operations Performed}}{\text{Bytes Accessed in Memory}}$$
-  $$\text{Performance} = \min(\text{Peak CPU Performance}, \text{Operational Intensity} \times \text{Peak Memory Bandwidth})$$
-- **Little's Law (I/O Saturation):**
-  $$\text{Average Queue Length} = \text{Arrival Rate} \times \text{Average Response Time}$$
+### 2. Build the Platform
+Compiles the static SPA frontend, the Go web backend, and the eBPF agent binaries.
+```bash
+make build
+```
 
-### Module D: Scientific Visualization (SvelteKit + ECharts)
-Analytical UI. Includes an interactive Roofline Chart, Latency Heatmaps, and Queue Saturation Dashboards.
+### 3. Start the Services
+Spins up VictoriaMetrics (TSDB) via Docker Compose and launches the Go server in the background.
+```bash
+make start
+```
+> 🌐 **Access the Dashboard:** [http://localhost:8080](http://localhost:8080)
 
-### Module E: Automated Auditor (Python)
-Synthesis engine. Extracts time windows, diagnoses primary bottlenecks, and issues an upgrade verdict exportable to PDF, Markdown, and JSON.
+### 4. Run the Agent
+Executes the eBPF data collection probes (requires `sudo` for kernel hook access).
+```bash
+make agent
+```
+
+---
+
+## 🧹 Maintenance & Data Management
+
+HQUD v1.0 includes an intuitive `Makefile` to manage the system state safely.
+
+- **Clean up build files**: If you wish to purge compiled binaries and frontend builds:
+  ```bash
+  make clean
+  ```
+- **Stop services**: To halt the background server and down the Docker containers:
+  ```bash
+  make stop
+  ```
+- **Wipe empirical data**: To completely reset your environment and delete all historical TSDB data:
+  ```bash
+  make wipe-data
+  ```
+
+---
+
+## 📖 Documentation
+
+For an in-depth look at how the mathematical calculations are performed, the architecture layout, and eBPF integration details, please refer to:
+- 📄 [**TECHNICAL_REFERENCE.md**](./TECHNICAL_REFERENCE.md): Detailed architectural module breakdown and formulas.
+- 📄 [**ARCHITECTURE.md**](./ARCHITECTURE.md): Technical constraints and environment map.
+- 📄 [**AGENT_INSTRUCTIONS.md**](./AGENT_INSTRUCTIONS.md): Rules for dynamic configurations and hardware agnosticism.

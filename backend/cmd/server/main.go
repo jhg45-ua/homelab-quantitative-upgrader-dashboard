@@ -125,7 +125,7 @@ func main() {
 		fmt.Fprint(w, `{"status":"ok","service":"hqud-audit-server"}`)
 	})
 
-	addr := ":8082"
+	addr := ":8083"
 	log.Printf("[audit-server] Listening on http://0.0.0.0%s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatalf("[audit-server] Fatal: %v", err)

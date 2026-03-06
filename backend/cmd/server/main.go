@@ -1,9 +1,10 @@
 // HQUD Backend HTTP Server
 // Listens on :8082
 // Endpoints:
-//   GET /api/generate-audit  — runs Python auditor, returns Markdown
-//   GET /api/hardware        — returns parsed config.yaml as JSON
-//   GET /api/health          — health check
+//
+//	GET /api/generate-audit  — runs Python auditor, returns Markdown
+//	GET /api/hardware        — returns parsed config.yaml as JSON
+//	GET /api/health          — health check
 package main
 
 import (
@@ -15,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -25,9 +27,9 @@ type HardwareConfig struct {
 	NodeName     string `yaml:"node_name"     json:"node_name"`
 	HardwareDesc string `yaml:"hardware_desc" json:"hardware_desc"`
 	Specs        struct {
-		Cores         int     `yaml:"cores"           json:"cores"`
-		PeakMips      float64 `yaml:"peak_mips"       json:"peak_mips"`
-		MaxMemBwGbps  float64 `yaml:"max_mem_bw_gbps" json:"max_mem_bw_gbps"`
+		Cores        int     `yaml:"cores"           json:"cores"`
+		PeakMips     float64 `yaml:"peak_mips"       json:"peak_mips"`
+		MaxMemBwGbps float64 `yaml:"max_mem_bw_gbps" json:"max_mem_bw_gbps"`
 	} `yaml:"specs" json:"specs"`
 	Ipmi struct {
 		Host string `yaml:"host" json:"host"`
@@ -168,11 +170,11 @@ func main() {
 	mux.Handle("/", spa)
 
 	addr := ":8080"
-	
+
 	srv := &http.Server{
 		Addr:         addr,
 		Handler:      securityHeadersMiddleware(mux),
-		ReadTimeout:  10 * time.Second,  // Prevents Slowloris attacks
+		ReadTimeout:  10 * time.Second, // Prevents Slowloris attacks
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}

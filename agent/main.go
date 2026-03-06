@@ -11,18 +11,20 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"hqud-backend/pkg/tsdb"
+
 	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/ipmi"
 	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/numa"
 	"github.com/jhg/homelab-quantitative-upgrader-dashboard/agent/pmu"
 )
 
 //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 bpf bpf/io_latency.c
+//go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 net_tcp bpf/net_tcp.c
 
 type Config struct {
 	NodeName string `yaml:"node_name"`
 	Specs    struct {
-		Cores         int     `yaml:"cores"`
-		PeakGflops    float64 `yaml:"peak_gflops"`
+		Cores        int     `yaml:"cores"`
+		PeakGflops   float64 `yaml:"peak_gflops"`
 		MaxMemBwGbps float64 `yaml:"max_mem_bw_gbps"`
 	} `yaml:"specs"`
 	Ipmi struct {
@@ -133,17 +135,17 @@ func main() {
 		var bucket uint32
 		var count uint64
 		iterator := objs.IoLatencyHist.Iterate()
-		
+
 		now := time.Now()
 		var cumulativeCount uint64 = 0
 
 		log.Println("\n=== Pushing I/O Latency Histogram ===")
-		
+
 		validMetrics := false
 		for iterator.Next(&bucket, &count) {
 			if count > 0 {
 				validMetrics = true
-				
+
 				// eBPF map is an array of 64 buckets representing log2 of microseconds
 				leTag := ""
 				if bucket == 63 {
@@ -155,7 +157,7 @@ func main() {
 					}
 					leTag = fmt.Sprintf("%d", threshold)
 				}
-				
+
 				// In a cumulative histogram, 'le' includes all previous counts
 				cumulativeCount += count
 
@@ -169,15 +171,15 @@ func main() {
 					Value:     float64(cumulativeCount),
 					Timestamp: now,
 				})
-				
+
 				log.Printf("Bucket le=%-6s : %6d IOPs (Cumulative: %d)", leTag, count, cumulativeCount)
 			}
 		}
-		
+
 		if err := iterator.Err(); err != nil {
 			log.Printf("Error iterating map: %v", err)
 		}
-		
+
 		if validMetrics {
 			// Push silently in a goroutine
 			go func(m []tsdb.Metric) {
@@ -227,26 +229,26 @@ func main() {
 
 			pmuMetrics := []tsdb.Metric{
 				{
-					Name: "hqud_cpu_cpi",
-					Labels: map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Name:      "hqud_cpu_cpi",
+					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
 					Value:     cpi,
 					Timestamp: now,
 				},
 				{
-					Name: "hqud_cpu_cache_miss_rate",
-					Labels: map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Name:      "hqud_cpu_cache_miss_rate",
+					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
 					Value:     cacheMissRate,
 					Timestamp: now,
 				},
 				{
-					Name: "hqud_cpu_amat_cycles",
-					Labels: map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
+					Name:      "hqud_cpu_amat_cycles",
+					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
 					Value:     amat,
 					Timestamp: now,
 				},
 				{
-					Name: "hqud_os_context_switches_ps",
-					Labels: map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
+					Name:      "hqud_os_context_switches_ps",
+					Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_pmu"},
 					Value:     ctxSwitchesPS,
 					Timestamp: now,
 				},
@@ -271,14 +273,14 @@ func main() {
 
 				powerMetrics := []tsdb.Metric{
 					{
-						Name: "hqud_power_watts",
-						Labels: map[string]string{"host": cfg.NodeName, "modulo": "ipmi_oob"},
+						Name:      "hqud_power_watts",
+						Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ipmi_oob"},
 						Value:     watts,
 						Timestamp: now,
 					},
 					{
-						Name: "hqud_efficiency_ips_per_watt",
-						Labels: map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
+						Name:      "hqud_efficiency_ips_per_watt",
+						Labels:    map[string]string{"host": cfg.NodeName, "modulo": "quantitative_engine"},
 						Value:     efficiency,
 						Timestamp: now,
 					},

@@ -44,7 +44,7 @@ release-pkg: clean
 	@echo "==> Building Go Backend..."
 	cd backend/cmd/server && GOOS=linux GOARCH=amd64 go build -o ../../../dist/hqud-server main.go
 	@echo "==> Building eBPF Agent..."
-	cd agent && go generate ./... && GOOS=linux GOARCH=amd64 go build -o ../dist/hqud-agent .
+	cd agent && go generate ./... && go mod tidy && GOOS=linux GOARCH=amd64 go build -o ../dist/hqud-agent .
 	@echo "==> Assembling distribution files..."
 	cp docker-compose.yml dist/
 	cp config.example.yaml dist/config.yaml

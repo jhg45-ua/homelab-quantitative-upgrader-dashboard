@@ -25,13 +25,13 @@ let fetched = false;
 
 export async function loadHardwareConfig() {
     if (fetched) return;
-    fetched = true;
     try {
         const res = await fetch('/api/hardware');
         if (res.ok) {
             const data = await res.json();
             hwConfig.set(data);
             hwLoaded.set(true);
+            fetched = true;
         }
     } catch (e) {
         console.warn('[hwConfig] /api/hardware unavailable, using defaults', e);

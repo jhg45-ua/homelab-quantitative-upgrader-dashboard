@@ -61,24 +61,14 @@ func configPath() string {
 	return filepath.Join(projectRoot(), "config.yaml") // Local Dev Path
 }
 
+var globalConfig HardwareConfig
+
 // ── /api/hardware ───────────────────────────────────────────────────────────
 
 func handleHardware(w http.ResponseWriter, r *http.Request) {
-	data, err := os.ReadFile(configPath())
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Cannot read config.yaml: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	var cfg HardwareConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		http.Error(w, fmt.Sprintf("Cannot parse config.yaml: %v", err), http.StatusInternalServerError)
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	json.NewEncoder(w).Encode(cfg)
+	json.NewEncoder(w).Encode(globalConfig)
 }
 
 // ── /api/generate-audit ─────────────────────────────────────────────────────
@@ -171,6 +161,18 @@ func securityHeadersMiddleware(next http.Handler) http.Handler {
 // ── main ────────────────────────────────────────────────────────────────────
 
 func main() {
+	// Parse config.yaml at startup
+	configData, err := os.ReadFile(configPath())
+	if err != nil {
+		log.Printf("[WARN] Cannot read config.yaml at startup: %v", err)
+	} else {
+		if err := yaml.Unmarshal(configData, &globalConfig); err != nil {
+			log.Printf("[WARN] Cannot parse config.yaml: %v", err)
+		} else {
+			log.Printf("[hqud-server] Loaded config for node: %s", globalConfig.NodeName)
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/generate-audit", handleGenerateAudit)
 	mux.HandleFunc("/api/hardware", handleHardware)

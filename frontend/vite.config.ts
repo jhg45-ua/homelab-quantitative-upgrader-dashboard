@@ -10,15 +10,15 @@ export default defineConfig({
 				changeOrigin: true
 			},
 			'/api/generate-audit': {
-				target: 'http://localhost:8083',
+				target: 'http://localhost:8080',
 				changeOrigin: true
 			},
 			'/api/hardware': {
-				target: 'http://localhost:8083',
+				target: 'http://localhost:8080',
 				changeOrigin: true
 			},
 			'/api/health': {
-				target: 'http://localhost:8083',
+				target: 'http://localhost:8080',
 				changeOrigin: true
 			}
 		}

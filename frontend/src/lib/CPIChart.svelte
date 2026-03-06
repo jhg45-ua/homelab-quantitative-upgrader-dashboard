@@ -1,95 +1,101 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { get } from 'svelte/store';
-  import * as echarts from 'echarts';
-  import { hwConfig } from '$lib/hwConfig';
+  import { onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
+  import * as echarts from "echarts";
+  import { hwConfig } from "$lib/hwConfig";
 
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
   let interval: ReturnType<typeof setInterval>;
   let ro: ResizeObserver;
 
-  const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
-  function getPromQL() { return `hqud_cpu_cpi{host="${get(hwConfig).node_name}"}`; }
+  const VICTORIA_METRICS_URL = "/api/vm/api/v1/query_range";
+  function getPromQL() {
+    return `hqud_cpu_cpi{host="${get(hwConfig).node_name}"}`;
+  }
 
   onMount(async () => {
     chart = echarts.init(chartContainer);
-    
+
     const option = {
       title: {
-        text: 'Cycles Per Instruction (CPI)',
-        subtext: 'Hardware PMU Pipeline Efficiency',
-        textStyle: { color: '#f8fafc' },
-        subtextStyle: { color: '#94a3b8' }
+        text: "Cycles Per Instruction (CPI)",
+        subtext: "Hardware PMU Pipeline Efficiency",
+        textStyle: { color: "#f8fafc" },
+        subtextStyle: { color: "#94a3b8" },
       },
       tooltip: {
-        trigger: 'axis',
-        formatter: function(params: any) {
-             const val = params[0].value[1];
-             return `${params[0].name}<br/>CPI: <b>${val.toFixed(3)}</b>`;
-        }
+        trigger: "axis",
+        formatter: function (params: any) {
+          const val = params[0].value[1];
+          return `${params[0].name}<br/>CPI: <b>${val.toFixed(3)}</b>`;
+        },
       },
       animation: false,
       grid: {
-        height: '60%',
-        top: '20%',
-        right: '5%',
-        bottom: '15%'
+        height: "60%",
+        top: "20%",
+        right: "5%",
+        bottom: "15%",
       },
       xAxis: {
-        type: 'category',
-        data: [], 
+        type: "category",
+        data: [],
         splitArea: { show: false },
-        axisLabel: { color: '#94a3b8' },
-        axisLine: { lineStyle: { color: '#334155' } }
+        axisLabel: { color: "#94a3b8" },
+        axisLine: { lineStyle: { color: "#334155" } },
       },
       yAxis: {
-        type: 'value',
-        name: 'CPI Ratio',
-        nameTextStyle: { color: '#94a3b8' },
-        splitLine: { lineStyle: { color: '#1e293b' } },
-        axisLabel: { color: '#94a3b8' }
+        type: "value",
+        name: "CPI Ratio",
+        nameTextStyle: { color: "#94a3b8" },
+        splitLine: { lineStyle: { color: "#1e293b" } },
+        axisLabel: { color: "#94a3b8" },
       },
       visualMap: {
         show: false,
         pieces: [
-          { gt: 0, lte: 1.0, color: '#10b981' }, // Green (Optimal)
-          { gt: 1.0, color: '#ef4444' }          // Red (Stall)
+          { gt: 0, lte: 1.0, color: "#10b981" }, // Green (Optimal)
+          { gt: 1.0, color: "#ef4444" }, // Red (Stall)
         ],
-        outOfRange: { color: '#94a3b8' }
+        outOfRange: { color: "#94a3b8" },
       },
-      series: [{
-        name: 'CPI',
-        type: 'line',
-        data: [],
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { width: 3 },
-        areaStyle: {
-          opacity: 0.1
+      series: [
+        {
+          name: "CPI",
+          type: "line",
+          data: [],
+          smooth: true,
+          symbol: "none",
+          lineStyle: { width: 3 },
+          areaStyle: {
+            opacity: 0.1,
+          },
+          markLine: {
+            silent: true,
+            symbol: "none",
+            label: {
+              position: "start",
+              formatter: "Stall Boundary (1.0)",
+              color: "#ef4444",
+            },
+            lineStyle: {
+              color: "#ef4444",
+              type: "dashed",
+              width: 2,
+            },
+            data: [{ yAxis: 1.0 }],
+          },
         },
-        markLine: {
-          silent: true,
-          symbol: 'none',
-          label: {
-            position: 'start',
-            formatter: 'Stall Boundary (1.0)',
-            color: '#ef4444'
-          },
-          lineStyle: {
-            color: '#ef4444',
-            type: 'dashed',
-            width: 2
-          },
-          data: [{ yAxis: 1.0 }]
-        }
-      }],
-      backgroundColor: 'transparent'
+      ],
+      backgroundColor: "transparent",
     };
 
     chart.setOption(option);
 
-    ro = new ResizeObserver(() => { if (chart) chart.resize(); });
+    ro = new ResizeObserver(() => {
+      if (chart) chart.resize();
+    });
     ro.observe(chartContainer);
 
     await fetchData();
@@ -109,33 +115,38 @@
       const step = 5;
 
       const response = await fetch(
-        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(getPromQL())}&start=${start}&end=${now}&step=${step}`
+        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(getPromQL())}&start=${start}&end=${now}&step=${step}`,
       );
-      
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
       const apiData = await response.json();
 
-      if (apiData.status !== 'success' || !apiData.data.result || apiData.data.result.length === 0) return;
-      
+      if (
+        apiData.status !== "success" ||
+        !apiData.data.result ||
+        apiData.data.result.length === 0
+      )
+        return;
+
       const series = apiData.data.result[0];
-      
+
       const timestamps: string[] = [];
       const dataPoints: [string, number][] = [];
 
       series.values.forEach((valArr: any) => {
         const date = new Date(valArr[0] * 1000);
-        const ts = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        const ts = `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
         timestamps.push(ts);
-        
+
         const cpiVal = parseFloat(valArr[1]);
         dataPoints.push([ts, cpiVal]);
       });
 
       chart.setOption({
         xAxis: { data: timestamps },
-        series: [{ data: dataPoints }]
+        series: [{ data: dataPoints }],
       });
-
     } catch (e) {
       console.error("Failed to fetch VictoriaMetrics CPI data:", e);
     }

@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import HeatmapChart from '$lib/HeatmapChart.svelte';
-  import CPIChart from '$lib/CPIChart.svelte';
-  import MemoryOSChart from '$lib/MemoryOSChart.svelte';
-  import RooflineChart from '$lib/RooflineChart.svelte';
-  import { hwConfig } from '$lib/hwConfig';
+  import { onMount, onDestroy } from "svelte";
+  import HeatmapChart from "$lib/HeatmapChart.svelte";
+  import CPIChart from "$lib/CPIChart.svelte";
+  import MemoryOSChart from "$lib/MemoryOSChart.svelte";
+  import RooflineChart from "$lib/RooflineChart.svelte";
+  import { hwConfig } from "$lib/hwConfig";
 
   let powerWatts = "---";
   let efficiencyIpsW = "---";
@@ -16,7 +16,7 @@
   let tcpHigh = false;
   let interval: ReturnType<typeof setInterval>;
 
-  const VM = '/api/vm/api/v1/query';
+  const VM = "/api/vm/api/v1/query";
 
   async function fetchScalars() {
     const node = $hwConfig.node_name;
@@ -26,41 +26,63 @@
         fetch(`${VM}?query=hqud_efficiency_ips_per_watt{host="${node}"}`),
         fetch(`${VM}?query=hqud_cpu_amat_cycles{host="${node}"}`),
         fetch(`${VM}?query=hqud_numa_miss_rate{host="${node}"}`),
-        fetch(`${VM}?query=hqud_net_tcp_retransmits_ps{host="${node}"}`)
+        fetch(`${VM}?query=hqud_net_tcp_retransmits_ps{host="${node}"}`),
       ]);
-      const pmd  = await pmRes.json();
+      const pmd = await pmRes.json();
       const effd = await effRes.json();
       const amatd = await amatRes.json();
       const numad = await numaRes.json();
       const tcpd = await tcpRes.json();
 
-      powerWatts = pmd.status === 'success' && pmd.data.result.length > 0
-        ? parseFloat(pmd.data.result[0].value[1]).toFixed(1) : "---";
-      efficiencyIpsW = effd.status === 'success' && effd.data.result.length > 0
-        ? parseFloat(effd.data.result[0].value[1]).toFixed(1) : "---";
-      if (amatd.status === 'success' && amatd.data.result.length > 0) {
+      powerWatts =
+        pmd.status === "success" && pmd.data.result.length > 0
+          ? parseFloat(pmd.data.result[0].value[1]).toFixed(1)
+          : "---";
+      efficiencyIpsW =
+        effd.status === "success" && effd.data.result.length > 0
+          ? parseFloat(effd.data.result[0].value[1]).toFixed(1)
+          : "---";
+      if (amatd.status === "success" && amatd.data.result.length > 0) {
         const v = parseFloat(amatd.data.result[0].value[1]);
-        amatCycles = v.toFixed(2); amatHigh = v > 15.0;
-      } else { amatCycles = "---"; amatHigh = false; }
-      if (numad.status === 'success' && numad.data.result.length > 0) {
+        amatCycles = v.toFixed(2);
+        amatHigh = v > 15.0;
+      } else {
+        amatCycles = "---";
+        amatHigh = false;
+      }
+      if (numad.status === "success" && numad.data.result.length > 0) {
         const v = parseFloat(numad.data.result[0].value[1]);
-        numaMissRate = v.toFixed(2); numaHigh = v > 20.0;
-      } else { numaMissRate = "---"; numaHigh = false; }
-      if (tcpd.status === 'success' && tcpd.data.result.length > 0) {
+        numaMissRate = v.toFixed(2);
+        numaHigh = v > 20.0;
+      } else {
+        numaMissRate = "---";
+        numaHigh = false;
+      }
+      if (tcpd.status === "success" && tcpd.data.result.length > 0) {
         const v = parseFloat(tcpd.data.result[0].value[1]);
-        tcpRetransmits = v.toFixed(1); tcpHigh = v > 0;
-      } else { tcpRetransmits = "---"; tcpHigh = false; }
-    } catch (e) { console.error("Scalar fetch error", e); }
+        tcpRetransmits = v.toFixed(1);
+        tcpHigh = v > 0;
+      } else {
+        tcpRetransmits = "---";
+        tcpHigh = false;
+      }
+    } catch (e) {
+      console.error("Scalar fetch error", e);
+    }
   }
 
-  onMount(() => { fetchScalars(); interval = setInterval(fetchScalars, 5000); });
-  onDestroy(() => { if (interval) clearInterval(interval); });
+  onMount(() => {
+    fetchScalars();
+    interval = setInterval(fetchScalars, 5000);
+  });
+  onDestroy(() => {
+    if (interval) clearInterval(interval);
+  });
 </script>
 
 <svelte:head><title>HQUD — Scientific Deep Dive</title></svelte:head>
 
 <div class="layout">
-
   <!-- HUD metrics row (6 cards) -->
   <div class="hud-grid">
     <div class="metric-card">
@@ -87,31 +109,37 @@
     <div class="metric-card">
       <div class="metric-label">Memory AMAT</div>
       <div class="row-baseline">
-        <span class="metric-value {amatHigh ? 'danger' : 'success'}">{amatCycles}</span>
+        <span class="metric-value {amatHigh ? 'danger' : 'success'}"
+          >{amatCycles}</span
+        >
         <span class="metric-unit">cycles</span>
       </div>
       <div class="metric-sub {amatHigh ? 'warn-sub' : ''}">
-        {amatHigh ? '⚠ Memory pressure' : '✓ L1 + Miss×150c'}
+        {amatHigh ? "⚠ Memory pressure" : "✓ L1 + Miss×150c"}
       </div>
     </div>
     <div class="metric-card">
       <div class="metric-label">NUMA Miss Rate</div>
       <div class="row-baseline">
-        <span class="metric-value {numaHigh ? 'danger' : 'success'}">{numaMissRate}</span>
+        <span class="metric-value {numaHigh ? 'danger' : 'success'}"
+          >{numaMissRate}</span
+        >
         <span class="metric-unit">%</span>
       </div>
       <div class="metric-sub {numaHigh ? 'warn-sub' : ''}">
-        {numaHigh ? '⚠ Cross-socket traffic' : '✓ Local memory access'}
+        {numaHigh ? "⚠ Cross-socket traffic" : "✓ Local memory access"}
       </div>
     </div>
     <div class="metric-card">
       <div class="metric-label">TCP Retransmits</div>
       <div class="row-baseline">
-        <span class="metric-value {tcpHigh ? 'warn' : 'success'}">{tcpRetransmits}</span>
+        <span class="metric-value {tcpHigh ? 'warn' : 'success'}"
+          >{tcpRetransmits}</span
+        >
         <span class="metric-unit">/s</span>
       </div>
       <div class="metric-sub {tcpHigh ? 'warn-sub' : ''}">
-        {tcpHigh ? '⚠ Packet loss' : '✓ Clean TCP'}
+        {tcpHigh ? "⚠ Packet loss" : "✓ Clean TCP"}
       </div>
     </div>
   </div>
@@ -127,7 +155,6 @@
     <div class="chart-panel"><MemoryOSChart /></div>
     <div class="chart-panel"><RooflineChart /></div>
   </div>
-
 </div>
 
 <style>
@@ -150,11 +177,17 @@
   }
 
   @media (max-width: 1100px) {
-    .hud-grid { grid-template-columns: repeat(3, 1fr); }
+    .hud-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
   }
   @media (max-width: 768px) {
-    .hud-grid { grid-template-columns: repeat(2, 1fr); }
-    .bottom-row { grid-template-columns: 1fr; }
+    .hud-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .bottom-row {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── Metric card overrides (scoped) ──────────────────────────────────── */
@@ -167,7 +200,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.1rem;
-    transition: border-color 0.25s, box-shadow 0.25s;
+    transition:
+      border-color 0.25s,
+      box-shadow 0.25s;
   }
   .metric-card:hover {
     border-top-color: rgba(56, 189, 248, 0.6);
@@ -175,7 +210,7 @@
   }
 
   .metric-label {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: "Space Grotesk", system-ui, sans-serif;
     font-size: 0.55rem;
     font-weight: 600;
     letter-spacing: 0.12em;
@@ -184,19 +219,27 @@
   }
 
   .metric-value {
-    font-family: 'JetBrains Mono', monospace, ui-monospace;
+    font-family: "JetBrains Mono", monospace, ui-monospace;
     font-size: 1.35rem;
     font-weight: 700;
     line-height: 1.1;
     margin-top: 0.05rem;
   }
-  .metric-value.accent  { color: #38bdf8; }
-  .metric-value.warn    { color: #fb923c; }
-  .metric-value.success { color: #34d399; }
-  .metric-value.danger  { color: #f87171; }
+  .metric-value.accent {
+    color: #38bdf8;
+  }
+  .metric-value.warn {
+    color: #fb923c;
+  }
+  .metric-value.success {
+    color: #34d399;
+  }
+  .metric-value.danger {
+    color: #f87171;
+  }
 
   .metric-unit {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", monospace;
     font-size: 0.65rem;
     color: #475569;
     margin-left: 0.15rem;
@@ -204,16 +247,21 @@
     padding-bottom: 0.1rem;
   }
 
-  .row-baseline { display: flex; align-items: baseline; }
+  .row-baseline {
+    display: flex;
+    align-items: baseline;
+  }
 
   .metric-sub {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: "Space Grotesk", system-ui, sans-serif;
     font-size: 0.6rem;
     color: #334155;
     margin-top: 0.15rem;
     line-height: 1.2;
   }
-  .warn-sub { color: #7f1d1d; }
+  .warn-sub {
+    color: #7f1d1d;
+  }
 
   /* ── Chart bottom row (3 panels now) ─────────────────────────────────── */
   .bottom-row {

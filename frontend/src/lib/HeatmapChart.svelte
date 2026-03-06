@@ -1,101 +1,109 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { get } from 'svelte/store';
-  import * as echarts from 'echarts';
-  import { hwConfig } from '$lib/hwConfig';
+  import { onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
+  import * as echarts from "echarts";
+  import { hwConfig } from "$lib/hwConfig";
 
   let chartContainer: HTMLDivElement;
   let chart: echarts.ECharts;
   let interval: ReturnType<typeof setInterval>;
   let ro: ResizeObserver;
 
-  const VICTORIA_METRICS_URL = '/api/vm/api/v1/query_range';
+  const VICTORIA_METRICS_URL = "/api/vm/api/v1/query_range";
 
   function getPromQL() {
     const node = get(hwConfig).node_name;
     return `sum(rate(hqud_io_latency_usec_bucket{host="${node}"}[1m])) by (le)`;
   }
 
-  onMount(async () => {
+  onMount(() => {
     chart = echarts.init(chartContainer);
 
     // ResizeObserver fires whenever the container changes size (flex layout, window resize)
     // This is more reliable than window.resize for proportional flex layouts
-    ro = new ResizeObserver(() => { if (chart) chart.resize(); });
+    ro = new ResizeObserver(() => {
+      if (chart) chart.resize();
+    });
     ro.observe(chartContainer);
-    
+
     const option = {
       title: {
-        text: 'eBPF Block I/O Latency Heatmap',
-        subtext: 'Quantitative Architecture Module D',
-        textStyle: { color: '#f8fafc' },
-        subtextStyle: { color: '#94a3b8' }
+        text: "eBPF Block I/O Latency Heatmap",
+        subtext: "Quantitative Architecture Module D",
+        textStyle: { color: "#f8fafc" },
+        subtextStyle: { color: "#94a3b8" },
       },
       tooltip: {
-        position: 'top',
+        position: "top",
         formatter: function (params: any) {
-             return `${params.value[1]} us: ${params.value[2].toFixed(2)} IOPs`;
-        }
+          return `${params.value[1]} us: ${params.value[2].toFixed(2)} IOPs`;
+        },
       },
       animation: false,
       grid: {
-        height: '60%',
-        top: '15%',
-        right: '5%',
-        bottom: '15%'
+        height: "60%",
+        top: "15%",
+        right: "5%",
+        bottom: "15%",
       },
       xAxis: {
-        type: 'category',
+        type: "category",
         data: [], // Will be filled with Timestamps
         splitArea: { show: true },
-        axisLabel: { color: '#94a3b8' }
+        axisLabel: { color: "#94a3b8" },
       },
       yAxis: {
-        type: 'category',
+        type: "category",
         data: [], // Will be filled with 'le' buckets
-        name: 'Latency (us)',
-        nameTextStyle: { color: '#94a3b8' },
+        name: "Latency (us)",
+        nameTextStyle: { color: "#94a3b8" },
         splitArea: { show: true },
-        axisLabel: { color: '#94a3b8' }
+        axisLabel: { color: "#94a3b8" },
       },
       visualMap: {
         min: 0,
         max: 10,
         calculable: true,
-        orient: 'vertical',
-        right: '0%',
-        top: '15%',
-        textStyle: { color: '#f8fafc' },
+        orient: "vertical",
+        right: "0%",
+        top: "15%",
+        textStyle: { color: "#f8fafc" },
         inRange: {
-          color: ['#0f172a', '#38bdf8', '#3b82f6', '#ef4444'] // Dark to Light Blue to Red
-        }
+          color: ["#0f172a", "#38bdf8", "#3b82f6", "#ef4444"], // Dark to Light Blue to Red
+        },
       },
-      series: [{
-        name: 'I/O Rate',
-        type: 'heatmap',
-        data: [],
-        label: { show: false },
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
-          }
-        }
-      }],
-      backgroundColor: 'transparent'
+      series: [
+        {
+          name: "I/O Rate",
+          type: "heatmap",
+          data: [],
+          label: { show: false },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: "rgba(0, 0, 0, 0.5)",
+            },
+          },
+        },
+      ],
+      backgroundColor: "transparent",
     };
 
     chart.setOption(option);
 
     // Initial fetch
-    await fetchData();
+    fetchData();
 
     // Setup polling every 5 seconds
     interval = setInterval(fetchData, 5000);
 
     const handleResize = () => chart.resize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      ro.disconnect();
+    };
   });
 
   onDestroy(() => {
@@ -110,25 +118,35 @@
       const step = 5; // 5 second resolution
 
       const response = await fetch(
-        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(getPromQL())}&start=${start}&end=${now}&step=${step}`
+        `${VICTORIA_METRICS_URL}?query=${encodeURIComponent(getPromQL())}&start=${start}&end=${now}&step=${step}`,
       );
-      
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      if (!response.ok)
+        throw new Error(`HTTP error! status: ${response.status}`);
       const apiData = await response.json();
 
-      if (apiData.status !== 'success' || !apiData.data.result) return;
-      
+      if (apiData.status !== "success" || !apiData.data.result) return;
+
       const results = apiData.data.result;
-      
+
       if (results.length === 0) return;
 
       // Render with static buckets to prevent dancing axis
-      const STATIC_BUCKETS = ['512', '1024', '2048', '4096', '8192', '16384', '32768', '+Inf'];
+      const STATIC_BUCKETS = [
+        "512",
+        "1024",
+        "2048",
+        "4096",
+        "8192",
+        "16384",
+        "32768",
+        "+Inf",
+      ];
 
       // Extract unique timestamps for X-axis from the first series
       const timestamps = results[0].values.map((v: any) => {
         const date = new Date(v[0] * 1000);
-        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}:${date.getSeconds().toString().padStart(2, "0")}`;
       });
 
       // Prepare heatmap data [xIndex, yIndex, value]
@@ -149,15 +167,14 @@
       chart.setOption({
         xAxis: { data: timestamps },
         yAxis: { data: STATIC_BUCKETS },
-        visualMap: { 
+        visualMap: {
           max: Math.max(10, Math.ceil(maxVal)),
           inRange: {
-            color: ['#0f172a', '#3b82f6', '#10b981', '#fbbf24', '#ef4444'] // Thermal: Dark -> Blue -> Green -> Yellow -> Red
-          }
+            color: ["#0f172a", "#3b82f6", "#10b981", "#fbbf24", "#ef4444"], // Thermal: Dark -> Blue -> Green -> Yellow -> Red
+          },
         },
-        series: [{ data: heatmapData }]
+        series: [{ data: heatmapData }],
       });
-
     } catch (e) {
       console.error("Failed to fetch VictoriaMetrics data:", e);
     }

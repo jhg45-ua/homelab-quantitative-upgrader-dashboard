@@ -9,7 +9,7 @@
   let interval: ReturnType<typeof setInterval>;
   let ro: ResizeObserver;
 
-  const VICTORIA_METRICS_URL = "/api/vm/api/v1/query_range";
+  const VICTORIA_METRICS_URL = "/api/v1/query_range";
 
   function getPromQL() {
     const node = get(hwConfig).node_name;

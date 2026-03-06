@@ -16,7 +16,7 @@
   let tcpHigh = false;
   let interval: ReturnType<typeof setInterval>;
 
-  const VM = "/api/vm/api/v1/query";
+  const VM = "/api/v1/query";
 
   async function fetchScalars() {
     const node = $hwConfig.node_name;

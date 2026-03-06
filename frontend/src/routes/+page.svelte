@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import { hwConfig } from "$lib/hwConfig";
 
-  const VM = "/api/vm/api/v1/query";
+  const VM = "/api/v1/query";
 
   type CardStatus = "OPTIMAL" | "WARNING" | "CRITICAL" | "NO DATA";
 

@@ -5,10 +5,9 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		proxy: {
-			'/api/vm': {
+			'/api/v1': {
 				target: 'http://localhost:8428',
-				changeOrigin: true,
-				rewrite: (path) => path.replace(/^\/api\/vm/, '')
+				changeOrigin: true
 			},
 			'/api/generate-audit': {
 				target: 'http://localhost:8083',

@@ -9,7 +9,7 @@
   let interval: ReturnType<typeof setInterval>;
   let ro: ResizeObserver;
 
-  const VM_URL = "/api/vm/api/v1/query_range";
+  const VM_URL = "/api/v1/query_range";
   function getCacheMissQuery() {
     return `hqud_cpu_cache_miss_rate{host="${get(hwConfig).node_name}"}`;
   }

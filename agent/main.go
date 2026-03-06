@@ -48,9 +48,14 @@ func loadConfig(path string) (*Config, error) {
 
 func main() {
 	log.Println("Loading Unified Dashboard Configuration...")
-	cfg, err := loadConfig("../config.yaml")
+	configPath := "config.yaml"
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		configPath = "../config.yaml"
+	}
+
+	cfg, err := loadConfig(configPath)
 	if err != nil {
-		log.Fatalf("Failed to load config.yaml: %v", err)
+		log.Fatalf("Failed to load config.yaml (tried ./config.yaml and ../config.yaml): %v", err)
 	}
 	log.Printf("Config loaded successfully for Target Node: %s", cfg.NodeName)
 

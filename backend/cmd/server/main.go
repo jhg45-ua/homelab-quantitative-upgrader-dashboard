@@ -51,7 +51,13 @@ func projectRoot() string {
 }
 
 func auditorDir() string { return filepath.Join(projectRoot(), "auditor") }
-func configPath() string { return filepath.Join(projectRoot(), "config.yaml") }
+
+func configPath() string {
+	if _, err := os.Stat("config.yaml"); err == nil {
+		return "config.yaml" // Production Release Path
+	}
+	return filepath.Join(projectRoot(), "config.yaml") // Local Dev Path
+}
 
 // ── /api/hardware ───────────────────────────────────────────────────────────
 
@@ -116,7 +122,12 @@ func handleGenerateAudit(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[audit] Report served successfully (%d bytes)", len(content))
 }
 
-func frontendBuildDir() string { return filepath.Join(projectRoot(), "frontend", "build") }
+func frontendBuildDir() string {
+	if _, err := os.Stat("frontend/build"); err == nil {
+		return "frontend/build" // Production Release Path
+	}
+	return filepath.Join(projectRoot(), "frontend", "build") // Local Dev Path
+} // ── SPA Handler ──
 
 type spaHandler struct {
 	staticPath string

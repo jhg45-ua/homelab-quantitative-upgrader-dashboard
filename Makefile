@@ -46,6 +46,8 @@ release-pkg: clean
 	@echo "==> Building eBPF Agent..."
 	cd agent && go generate ./... && go mod tidy && GOOS=linux GOARCH=amd64 go build -o ../dist/hqud-agent .
 	@echo "==> Assembling distribution files..."
+	mkdir -p dist/frontend
+	cp -r frontend/build dist/frontend/
 	cp docker-compose.yml dist/
 	cp config.example.yaml dist/config.yaml
 	cp Makefile.run dist/Makefile

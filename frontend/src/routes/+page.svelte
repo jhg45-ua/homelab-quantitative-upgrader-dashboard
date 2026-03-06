@@ -35,6 +35,12 @@
       icon: '💾', value: '---', unit: 'µs', status: 'NO DATA',
       thresholds: '< 2000 Optimal · 2k–10k Warning · > 10k Critical',
       detail: 'P99 block I/O latency captured by eBPF Kprobes on blk_mq'
+    },
+    {
+      id: 'tcp', title: 'Network', subtitle: 'TCP Health (Retransmits)',
+      icon: '🌐', value: '---', unit: '/s', status: 'NO DATA',
+      thresholds: '0 Optimal · 1–5 Warning · > 5 Critical',
+      detail: 'TCP retransmission rate captured by eBPF kprobe on tcp_retransmit_skb'
     }
   ];
 
@@ -45,6 +51,7 @@
     if (id === 'cpi')  return val < 2.0 ? 'OPTIMAL' : val < 4.0 ? 'WARNING' : 'CRITICAL';
     if (id === 'amat') return val < 10  ? 'OPTIMAL' : val < 15  ? 'WARNING' : 'CRITICAL';
     if (id === 'p99')  return val < 2000? 'OPTIMAL' : val < 10000? 'WARNING' : 'CRITICAL';
+    if (id === 'tcp')  return val <= 0  ? 'OPTIMAL' : val < 5   ? 'WARNING' : 'CRITICAL';
     return 'NO DATA';
   }
 
@@ -57,10 +64,11 @@
 
   async function fetchData() {
     try {
-      const [cpiD, amatD, p99D] = await Promise.all([
+      const [cpiD, amatD, p99D, tcpD] = await Promise.all([
         fetch(`${VM}?query=hqud_cpu_cpi{host="r720-vm"}`).then(r => r.json()),
         fetch(`${VM}?query=hqud_cpu_amat_cycles{host="r720-vm"}`).then(r => r.json()),
         fetch(`${VM}?query=${encodeURIComponent('histogram_quantile(0.99, sum(rate(hqud_io_latency_usec_bucket{host="r720-vm"}[5m])) by (le))')}`).then(r => r.json()),
+        fetch(`${VM}?query=hqud_net_tcp_retransmits_ps{host="r720-vm"}`).then(r => r.json()),
       ]);
 
       const updated = [...cards];
@@ -79,6 +87,11 @@
         const v = parseFloat(p99D.data.result[0].value[1]);
         updated[2] = { ...updated[2], value: v.toFixed(0), status: getStatus('p99', v) };
       } else { updated[2] = { ...updated[2], value: '---', status: 'NO DATA' }; }
+
+      if (tcpD.status === 'success' && tcpD.data.result.length > 0) {
+        const v = parseFloat(tcpD.data.result[0].value[1]);
+        updated[3] = { ...updated[3], value: v.toFixed(1), status: getStatus('tcp', v) };
+      } else { updated[3] = { ...updated[3], value: '---', status: 'NO DATA' }; }
 
       cards = updated;
       lastUpdated = new Date().toLocaleTimeString('en-GB');
@@ -256,11 +269,12 @@
 
   .cards-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 1.5rem;
   }
 
-  @media (max-width: 900px) { .cards-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 1100px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) { .cards-grid { grid-template-columns: 1fr; } }
 
   .status-card {
     background: rgba(15, 23, 42, 0.85);

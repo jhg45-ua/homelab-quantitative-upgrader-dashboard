@@ -1,6 +1,6 @@
 import requests
 from jinja2 import Environment, FileSystemLoader
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 
 # ── Configuration ────────────────────────────────────────────────────────────
@@ -109,7 +109,7 @@ def main():
     print("HQUD Module E — Quantitative Architecture Auditor v2.0")
     print("=" * 55)
 
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     # ── Fetch all metrics ──────────────────────────────────────────────────
     print("\nFetching live metrics from VictoriaMetrics…")

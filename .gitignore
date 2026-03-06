@@ -77,3 +77,5 @@ auditor/.pytest_cache/
 auditor/audit_report.md
 testfile
 config.yaml
+backend/server
+agent/net_tcp_x86_bpfel.o

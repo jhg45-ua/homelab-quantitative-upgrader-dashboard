@@ -76,6 +76,21 @@ func main() {
 
 	log.Println("eBPF program successfully loaded and hooked with MQ Kprobes.")
 
+	// --- MODULE F: TCP Retransmit eBPF Probe ---
+	var netObjs net_tcpObjects
+	if err := loadNet_tcpObjects(&netObjs, nil); err != nil {
+		log.Printf("[WARN] Loading TCP eBPF objects failed (non-fatal): %v", err)
+	} else {
+		defer netObjs.Close()
+		kpTcp, err := link.Kprobe("tcp_retransmit_skb", netObjs.TcpRetransmitSkb, nil)
+		if err != nil {
+			log.Printf("[WARN] Attaching kprobe tcp_retransmit_skb failed (non-fatal): %v", err)
+		} else {
+			defer kpTcp.Close()
+			log.Println("TCP retransmit kprobe attached successfully.")
+		}
+	}
+
 	log.Println("Initializing Hardware PMU Collector...")
 	pmuCollector, err := pmu.NewCollector()
 	if err != nil {
@@ -99,6 +114,16 @@ func main() {
 
 	// Store previous PMU counts to calculate deltas
 	prevCounters, _ := pmuCollector.ReadCounters()
+
+	// Previous TCP retransmit count for delta computation
+	var prevTcpRetransmits uint64 = 0
+	if netObjs.TcpRetransmitCount != nil {
+		var initVal uint64
+		var k uint32 = 0
+		if err := netObjs.TcpRetransmitCount.Lookup(k, &initVal); err == nil {
+			prevTcpRetransmits = initVal
+		}
+	}
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -285,6 +310,31 @@ func main() {
 					log.Printf("TSDB push NUMA failed: %v", err)
 				}
 			}(numaMissRate)
+		}
+
+		// --- MODULE F: TCP Retransmit Rate ---
+		if netObjs.TcpRetransmitCount != nil {
+			var curTcp uint64
+			var k uint32 = 0
+			if err := netObjs.TcpRetransmitCount.Lookup(k, &curTcp); err == nil {
+				delta := curTcp - prevTcpRetransmits
+				prevTcpRetransmits = curTcp
+				retransmitsPS := float64(delta) / 5.0
+				log.Printf("--- TCP Retransmits/s: %.2f (total: %d) ---", retransmitsPS, curTcp)
+
+				go func(v float64) {
+					if err := tsdbClient.Push([]tsdb.Metric{{
+						Name:      "hqud_net_tcp_retransmits_ps",
+						Labels:    map[string]string{"host": cfg.NodeName, "modulo": "ebpf_tcp"},
+						Value:     v,
+						Timestamp: now,
+					}}); err != nil {
+						log.Printf("TSDB push TCP retransmits failed: %v", err)
+					}
+				}(retransmitsPS)
+			} else {
+				log.Printf("[TCP] Map read error: %v", err)
+			}
 		}
 	}
 }

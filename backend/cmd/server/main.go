@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -176,6 +178,10 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"status":"ok","service":"hqud-server"}`)
 	})
+
+	tsdbURL, _ := url.Parse("http://127.0.0.1:8428")
+	proxy := httputil.NewSingleHostReverseProxy(tsdbURL)
+	mux.Handle("/api/v1/", proxy)
 
 	spa := spaHandler{staticPath: frontendBuildDir(), indexPath: "index.html"}
 	mux.Handle("/", spa)

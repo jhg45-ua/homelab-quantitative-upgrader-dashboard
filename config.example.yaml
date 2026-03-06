@@ -7,6 +7,3 @@ hardware_limits:
   max_mem_bw_gbps: 51.2
 ipmi:
   enabled: true
-  host: "192.168.1.100"
-  user: "admin"
-  pass: "super_secret_password"

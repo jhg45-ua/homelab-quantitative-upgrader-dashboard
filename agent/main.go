@@ -30,10 +30,7 @@ type Config struct {
 		MaxMemBwGbps float64 `yaml:"max_mem_bw_gbps"`
 	} `yaml:"hardware_limits"`
 	Ipmi struct {
-		Enabled bool   `yaml:"enabled"`
-		Host    string `yaml:"host"`
-		User    string `yaml:"user"`
-		Pass    string `yaml:"pass"`
+		Enabled bool `yaml:"enabled"`
 	} `yaml:"ipmi"`
 }
 
@@ -114,8 +111,8 @@ func main() {
 	log.Println("PMU started successfully.")
 
 	// --- MODULE A Addendum: Initialize IPMI Collector ---
-	log.Printf("Initializing IPMI Collector for host: %s\n", cfg.Ipmi.Host)
-	ipmiCollector := ipmi.NewCollector(cfg.Ipmi.Host, cfg.Ipmi.User, cfg.Ipmi.Pass)
+	log.Println("Initializing local IPMI Collector...")
+	ipmiCollector := ipmi.NewCollector()
 
 	log.Println("Measuring block I/O latency and CPU CPI. Pushing to VictoriaMetrics...")
 

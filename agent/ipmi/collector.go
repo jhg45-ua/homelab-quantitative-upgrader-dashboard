@@ -9,18 +9,10 @@ import (
 	"time"
 )
 
-type Collector struct {
-	Host string
-	User string
-	Pass string
-}
+type Collector struct{}
 
-func NewCollector(host, user, pass string) *Collector {
-	return &Collector{
-		Host: host,
-		User: user,
-		Pass: pass,
-	}
+func NewCollector() *Collector {
+	return &Collector{}
 }
 
 // ReadPowerWatts executes ipmitool over LAN+ and parses the instantaneous power reading.
@@ -35,7 +27,7 @@ func (c *Collector) ReadPowerWatts() (float64, error) {
 	output, err := cmd.Output()
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
-			return 0, fmt.Errorf("ipmitool timed out connecting to %s", c.Host)
+			return 0, fmt.Errorf("ipmitool timed out")
 		}
 		return 0, fmt.Errorf("ipmitool execution failed: %v", err)
 	}

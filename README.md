@@ -1,5 +1,36 @@
 # HomeLab Quantitative Upgrader Dashboard (HQUD)
 
+**Release v1.0**: HQUD is now an extremely lightweight platform. It operates as a strict Single Page Application (SPA) served directly by an ultralight Go binary—**no Node.js required in production!** 
+
+## Quickstart (v1.0)
+
+1. **Configure Environment:** Edit `config.yaml` with your hardware specifics.
+2. **Build the Platform:** 
+   ```bash
+   make build
+   ```
+   *(Compiles the static frontend, Go backend, and eBPF agent)*
+3. **Start the Services:** 
+   ```bash
+   make start
+   ```
+   *(Spins up VictoriaMetrics via Docker and launches the Go server in the background. Access the web interface at `http://localhost:8080`)*
+4. **Run the Agent:** 
+   ```bash
+   make agent
+   ```
+   *(Executes the eBPF data collection probes with sudo privileges)*
+
+### Data Management
+
+To reset the environment and clear all empirical data, use the new wipe command:
+```bash
+make wipe-data
+```
+*(This gracefully stops the backend and database, deletes `./data/tsdb`, and restores an empty data state. You will see the confirmation: "Datos empíricos borrados con éxito. El sistema está limpio.").*
+
+---
+
 ## 1. PROJECT OBJECTIVE
 Monitoring, empirical analysis, and hardware auditing platform for a HomeLab environment (Proxmox/Ubuntu). It mathematically quantifies the impact of workloads and generates justified verdicts on hardware upgrades based on the book "Computer Architecture: A Quantitative Approach" (Hennessy & Patterson).
 

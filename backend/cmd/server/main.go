@@ -114,6 +114,33 @@ func handleGenerateAudit(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[audit] Report served successfully (%d bytes)", len(content))
 }
 
+func frontendBuildDir() string { return filepath.Join(projectRoot(), "frontend", "build") }
+
+type spaHandler struct {
+	staticPath string
+	indexPath  string
+}
+
+func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path, err := filepath.Abs(r.URL.Path)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	path = filepath.Join(h.staticPath, path)
+
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.FileServer(http.Dir(h.staticPath)).ServeHTTP(w, r)
+}
+
 // ── main ────────────────────────────────────────────────────────────────────
 
 func main() {
@@ -122,12 +149,15 @@ func main() {
 	mux.HandleFunc("/api/hardware", handleHardware)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"status":"ok","service":"hqud-audit-server"}`)
+		fmt.Fprint(w, `{"status":"ok","service":"hqud-server"}`)
 	})
 
-	addr := ":8083"
-	log.Printf("[audit-server] Listening on http://0.0.0.0%s", addr)
+	spa := spaHandler{staticPath: frontendBuildDir(), indexPath: "index.html"}
+	mux.Handle("/", spa)
+
+	addr := ":8080"
+	log.Printf("[hqud-server] Listening on http://0.0.0.0%s", addr)
 	if err := http.ListenAndServe(addr, mux); err != nil {
-		log.Fatalf("[audit-server] Fatal: %v", err)
+		log.Fatalf("[hqud-server] Fatal: %v", err)
 	}
 }

@@ -33,24 +33,21 @@ mkdir hqud && cd hqud
 tar -xzvf ../hqud-linux-amd64.tar.gz
 ```
 
-### 3. Configure the Environment
-Input your local hardware specifications (used by the mathematics engine to calculate theoretical limits).
+### 3. Run Native Installer
+HQUD v1.0.1 is a 100% native baremetal application relying on systemd (VictoriaMetrics, the Go Backend, and the eBPF Agent). There are no Docker requirements.
+
+Execute the provided installation script with root privileges to install the binaries securely into `/opt/hqud` and start the system services automatically.
 ```bash
-# Edit the provided config.yaml with your specific hardware details
-nano config.yaml
+sudo ./install.sh
 ```
 
-### 4. Start the Platform
-Spin up VictoriaMetrics (TSDB) via Docker Compose and launch the services.
+### 4. Configure the Environment
+Input your local hardware specifications (used by the mathematics engine to calculate theoretical limits). This config file was installed alongside the binaries in `/opt/hqud`.
 ```bash
-make start
+sudo nano /opt/hqud/config.yaml
+sudo systemctl restart hqud-server hqud-agent
 ```
-> 🌐 **Access the Dashboard:** [http://localhost:8080](http://localhost:8080)
-
-To execute the eBPF data collection probes (requires `sudo` for kernel hook access):
-```bash
-make agent
-```
+> 🌐 **Access the Dashboard:** [http://<YOUR_SERVER_IP>:8080](http://localhost:8080)
 
 ---
 

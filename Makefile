@@ -39,6 +39,11 @@ clean:
 release-pkg: clean
 	@echo "==> Preparing Release Package..."
 	mkdir -p dist
+	@echo "==> Fetching VictoriaMetrics TSDB (Native)..."
+	wget -qO dist/vm.tar.gz https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v1.93.0/victoria-metrics-linux-amd64-v1.93.0.tar.gz
+	tar -xzf dist/vm.tar.gz -C dist victoria-metrics-prod
+	mv dist/victoria-metrics-prod dist/hqud-tsdb
+	rm dist/vm.tar.gz
 	@echo "==> Building Frontend (SPA)..."
 	cd frontend && npm install && npm run build
 	@echo "==> Building Go Backend..."
@@ -48,9 +53,9 @@ release-pkg: clean
 	@echo "==> Assembling distribution files..."
 	mkdir -p dist/frontend
 	cp -r frontend/build dist/frontend/
-	cp docker-compose.yml dist/
 	cp config.example.yaml dist/config.yaml
-	cp Makefile.run dist/Makefile
+	cp scripts/install.sh dist/install.sh
+	chmod +x dist/install.sh
 	@echo "==> Compressing package..."
 	tar -czvf hqud-linux-amd64.tar.gz -C dist .
 	@echo "Paquete hqud-linux-amd64.tar.gz generado con éxito."

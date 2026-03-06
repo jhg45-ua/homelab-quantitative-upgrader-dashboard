@@ -55,7 +55,8 @@ release-pkg: clean
 	cp -r frontend/build dist/frontend/
 	cp config.example.yaml dist/config.yaml
 	cp scripts/install.sh dist/install.sh
-	chmod +x dist/install.sh
+	cp scripts/uninstall.sh dist/uninstall.sh
+	chmod +x dist/install.sh dist/uninstall.sh
 	@echo "==> Compressing package..."
 	tar -czvf hqud-linux-amd64.tar.gz -C dist .
 	@echo "Paquete hqud-linux-amd64.tar.gz generado con éxito."

@@ -176,11 +176,24 @@ func main() {
 	mux.HandleFunc("/api/hardware", handleHardware)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"status":"ok","service":"hqud-server"}`)
+
+		// Ping VictoriaMetrics
+		client := http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get("http://127.0.0.1:8428/api/v1/status/tsdb")
+		if err != nil || resp.StatusCode != http.StatusOK {
+			fmt.Fprint(w, `{"status":"disconnected","service":"hqud-server"}`)
+			return
+		}
+		defer resp.Body.Close()
+		fmt.Fprint(w, `{"status":"connected","service":"hqud-server"}`)
 	})
 
 	tsdbURL, _ := url.Parse("http://127.0.0.1:8428")
 	proxy := httputil.NewSingleHostReverseProxy(tsdbURL)
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("[Proxy Error] Failed to route %s to VictoriaMetrics: %v", r.URL.Path, err)
+		http.Error(w, "TSDB Proxy Error", http.StatusBadGateway)
+	}
 	mux.Handle("/api/v1/", proxy)
 
 	spa := spaHandler{staticPath: frontendBuildDir(), indexPath: "index.html"}

@@ -169,7 +169,7 @@ func main() {
 				metrics = append(metrics, tsdb.Metric{
 					Name: "hqud_io_latency_usec_bucket",
 					Labels: map[string]string{
-						"host":   "r720-vm",
+						"host":   cfg.NodeName,
 						"modulo": "ebpf_io",
 						"le":     leTag,
 					},

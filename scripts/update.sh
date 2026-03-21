@@ -18,6 +18,7 @@ cp -f hqud-tsdb /opt/hqud/
 cp -f hqud-server /opt/hqud/
 cp -f hqud-agent /opt/hqud/
 cp -rf frontend /opt/hqud/
+cp -rf auditor /opt/hqud/
 
 echo "==> Comprobando configuración de hardware e IPMI..."
 if [ ! -f /opt/hqud/config.yaml ]; then

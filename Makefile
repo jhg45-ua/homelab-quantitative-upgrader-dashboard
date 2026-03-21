@@ -53,6 +53,7 @@ release-pkg: clean
 	@echo "==> Assembling distribution files..."
 	mkdir -p dist/frontend
 	cp -r frontend/build dist/frontend/
+	cp -r auditor dist/auditor/
 	cp config.example.yaml dist/config.yaml
 	cp scripts/install.sh dist/install.sh
 	cp scripts/uninstall.sh dist/uninstall.sh

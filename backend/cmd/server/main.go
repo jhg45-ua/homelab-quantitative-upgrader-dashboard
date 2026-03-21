@@ -59,7 +59,19 @@ func projectRoot() string {
 	return abs
 }
 
-func auditorDir() string { return filepath.Join(projectRoot(), "auditor") }
+func auditorDir() string {
+	if _, err := os.Stat("/opt/hqud/auditor"); err == nil {
+		return "/opt/hqud/auditor" // Production Release Path
+	}
+	exe, err := os.Executable()
+	if err == nil {
+		rel := filepath.Join(filepath.Dir(exe), "auditor")
+		if _, err := os.Stat(rel); err == nil {
+			return rel
+		}
+	}
+	return filepath.Join(projectRoot(), "auditor")
+}
 
 func configPath() string {
 	if _, err := os.Stat("config.yaml"); err == nil {

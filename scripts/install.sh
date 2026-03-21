@@ -34,6 +34,14 @@ else
     echo "⚠️ Warning: SPA frontend directory missing in the package."
 fi
 
+# Copy the auditor
+if [ -d "auditor" ]; then
+    rm -rf "${INSTALL_DIR}/auditor"
+    cp -r auditor "${INSTALL_DIR}/auditor"
+else
+    echo "⚠️ Warning: auditor directory missing in the package."
+fi
+
 # Ensure executable permissions
 chmod +x "${INSTALL_DIR}/hqud-tsdb"
 chmod +x "${INSTALL_DIR}/hqud-server"

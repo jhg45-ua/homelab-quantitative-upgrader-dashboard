@@ -49,55 +49,63 @@
       {
         title: {
           text: "Roofline Model",
-          subtext: `${$hwConfig.hardware_desc || "Unknown"} · H&P Ch.4`,
+          subtext: "Dell PowerEdge R720 (2x Intel Xeon E5-2670) · H&P Ch.4",
           textStyle: {
             color: "#f1f5f9",
-            fontSize: 14,
-            fontFamily: "Space Grotesk",
+            fontSize: 16,
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontWeight: 700
           },
-          subtextStyle: { color: "#64748b", fontSize: 11 },
-          top: 8,
+          subtextStyle: { color: "#94a3b8", fontSize: 11, fontFamily: "Inter, system-ui, sans-serif" },
+          top: 12,
+          left: 16,
         },
         tooltip: {
           trigger: "item",
-          formatter: (p: any) => {
+          backgroundColor: "rgba(15, 23, 42, 0.95)",
+          borderColor: "#334155",
+          textStyle: { color: "#f8fafc", fontFamily: "Inter, sans-serif", fontSize: 11 },
+          formatter: (p) => {
             if (p.seriesName === "Workload") {
-              return `<b>Current Workload</b><br/>OI: ${p.value[0].toFixed(2)} ops/byte<br/>Perf: ${p.value[1].toFixed(0)} MIPS`;
+              return `<b>Current Workload</b><br/>OI: ${p.value[0].toFixed(2)} ops/byte<br/>Perf: ${p.value[1].toLocaleString(undefined, {maximumFractionDigits:0})} MIPS`;
             }
             return p.seriesName;
           },
         },
         legend: {
           data: ["Memory BW Roof", "Compute Roof", "Workload"],
-          top: 10,
-          right: 20,
-          textStyle: { color: "#64748b", fontSize: 10 },
+          top: 14,
+          right: 24,
+          textStyle: { color: "#94a3b8", fontSize: 11, fontFamily: "Inter, sans-serif", fontWeight: 500 },
         },
-        grid: { top: "22%", right: "8%", bottom: "14%", left: "12%" },
+        grid: { top: "22%", right: "6%", bottom: "14%", left: "12%" },
         xAxis: {
           type: "log",
           name: "Operational Intensity (Instr / Cache-Miss × 64B)",
           nameTextStyle: {
-            color: "#64748b",
-            fontSize: 10,
+            color: "#94a3b8",
+            fontSize: 11,
+            fontFamily: "Inter, sans-serif",
             padding: [10, 0, 0, 0],
           },
           nameLocation: "middle",
           nameGap: 30,
           min: 0.01,
           max: 1000,
-          axisLabel: { color: "#64748b", fontSize: 10 },
-          splitLine: { lineStyle: { color: "#1e293b" } },
+          axisLabel: { color: "#64748b", fontSize: 10, fontFamily: "Inter, sans-serif" },
+          splitLine: { show: true, lineStyle: { color: "#1e293b" } },
+          minorSplitLine: { show: true, lineStyle: { color: "rgba(30, 41, 59, 0.4)" } },
           axisLine: { lineStyle: { color: "#334155" } },
         },
         yAxis: {
           type: "log",
           name: "Performance (MIPS)",
-          nameTextStyle: { color: "#64748b", fontSize: 10 },
+          nameTextStyle: { color: "#94a3b8", fontSize: 11, fontFamily: "Inter, sans-serif" },
           min: 1,
           max: PEAK_MIPS * 2,
-          axisLabel: { color: "#64748b", fontSize: 10 },
-          splitLine: { lineStyle: { color: "#1e293b" } },
+          axisLabel: { color: "#64748b", fontSize: 10, fontFamily: "Inter, sans-serif" },
+          splitLine: { show: true, lineStyle: { color: "#1e293b" } },
+          minorSplitLine: { show: true, lineStyle: { color: "rgba(30, 41, 59, 0.4)" } },
           axisLine: { lineStyle: { color: "#334155" } },
         },
         series: [
@@ -107,9 +115,25 @@
             data: bwLineData,
             smooth: false,
             symbol: "none",
-            lineStyle: { color: "#f59e0b", width: 2, type: "dashed" },
-            areaStyle: { color: "rgba(245, 158, 11, 0.04)" },
+            itemStyle: { color: "#3b82f6" },
+            lineStyle: { color: "#3b82f6", width: 3, type: "dashed" },
+            areaStyle: { color: "rgba(59, 130, 246, 0.06)" },
             z: 1,
+            markPoint: {
+              symbol: "none",
+              data: [
+                {
+                  coord: [ridgeOI * 0.015, PEAK_MIPS * 0.02],
+                  value: "Memory-Bound Region",
+                  label: { color: "rgba(59, 130, 246, 0.12)", fontSize: 26, fontWeight: "bold", fontFamily: "Inter, sans-serif" }
+                },
+                {
+                  coord: [ridgeOI * 0.05, ((ridgeOI * 0.05 * ((PEAK_BW_GBS * 1e9) / 64)) / 1e6) * 1.5],
+                  value: `Peak Memory Bandwidth Roof: ${PEAK_BW_GBS.toFixed(1)} GB/s`,
+                  label: { color: "#94a3b8", fontSize: 11, fontFamily: "Inter, sans-serif", rotate: 36 }
+                }
+              ]
+            }
           },
           {
             name: "Compute Roof",
@@ -117,27 +141,56 @@
             data: computeLineData,
             smooth: false,
             symbol: "none",
-            lineStyle: { color: "#ef4444", width: 2, type: "dashed" },
+            itemStyle: { color: "#ef4444" },
+            lineStyle: { color: "#ef4444", width: 3, type: "dashed" },
             z: 1,
+            markPoint: {
+              symbol: "none",
+              data: [
+                {
+                  coord: [ridgeOI * 4, PEAK_MIPS * 0.02],
+                  value: "Compute-Bound Region",
+                  label: { color: "rgba(239, 68, 68, 0.08)", fontSize: 26, fontWeight: "bold", fontFamily: "Inter, sans-serif" }
+                },
+                {
+                  coord: [ridgeOI * 4, PEAK_MIPS * 0.75],
+                  value: `Peak Compute Performance Roof: ${PEAK_MIPS.toLocaleString()} MIPS`,
+                  label: { color: "#94a3b8", fontSize: 11, fontFamily: "Inter, sans-serif" }
+                }
+              ]
+            },
+            markLine: {
+              symbol: ["none", "none"],
+              lineStyle: { color: "#475569", width: 1, type: "dotted" },
+              label: { show: true, position: "start", formatter: "Ridge OI ≈ " + ridgeOI.toFixed(1), color: "#64748b", fontSize: 10, fontFamily: "Inter, sans-serif" },
+              data: [ { xAxis: ridgeOI } ]
+            }
           },
           {
             name: "Workload",
             type: "scatter",
             data: [],
-            symbolSize: 16,
+            symbolSize: 18,
             itemStyle: {
-              color: "#38bdf8",
-              borderColor: "#0ea5e9",
+              color: "#7dd3fc",
+              borderColor: "#38bdf8",
               borderWidth: 2,
-              shadowColor: "rgba(56, 189, 248, 0.5)",
-              shadowBlur: 12,
+              shadowColor: "rgba(56, 189, 248, 0.6)",
+              shadowBlur: 14,
             },
             z: 10,
           },
         ],
-        backgroundColor: "transparent",
+        backgroundColor: {
+          type: 'radial',
+          x: 0.5, y: 0.5, r: 0.7,
+          colorStops: [
+            { offset: 0, color: 'rgba(15, 23, 42, 0.4)' },
+            { offset: 1, color: 'transparent' }
+          ]
+        },
       },
-      true,
+      true
     ); // true = notMerge, forces full rebuild
   }
 

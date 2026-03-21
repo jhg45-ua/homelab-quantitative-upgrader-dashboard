@@ -47,6 +47,7 @@
 
     chart.setOption(
       {
+        color: ['blue', 'red', 'lightblue'],
         title: {
           text: "Roofline Model",
           subtext: "Dell PowerEdge R720 (2x Intel Xeon E5-2670) · H&P Ch.4",
@@ -115,21 +116,21 @@
             data: bwLineData,
             smooth: false,
             symbol: "none",
-            itemStyle: { color: "#3b82f6" },
-            lineStyle: { color: "#3b82f6", width: 3, type: "dashed" },
-            areaStyle: { color: "rgba(59, 130, 246, 0.06)" },
+            lineStyle: { color: "blue", width: 3, type: "dashed" },
+            areaStyle: { color: "rgba(0, 0, 255, 0.06)" },
             z: 1,
             markPoint: {
               symbol: "none",
+              label: { show: true, formatter: "{b}" },
               data: [
                 {
                   coord: [ridgeOI * 0.015, PEAK_MIPS * 0.02],
-                  value: "Memory-Bound Region",
-                  label: { color: "rgba(59, 130, 246, 0.12)", fontSize: 26, fontWeight: "bold", fontFamily: "Inter, sans-serif" }
+                  name: "Memory-Bound",
+                  label: { color: "rgba(0, 0, 255, 0.12)", fontSize: 26, fontWeight: "bold", fontFamily: "Inter, sans-serif" }
                 },
                 {
                   coord: [ridgeOI * 0.05, ((ridgeOI * 0.05 * ((PEAK_BW_GBS * 1e9) / 64)) / 1e6) * 1.5],
-                  value: `Peak Memory Bandwidth Roof: ${PEAK_BW_GBS.toFixed(1)} GB/s`,
+                  name: `Peak Mem BW: ${PEAK_BW_GBS.toFixed(1)} GB/s`,
                   label: { color: "#94a3b8", fontSize: 11, fontFamily: "Inter, sans-serif", rotate: 36 }
                 }
               ]
@@ -141,20 +142,20 @@
             data: computeLineData,
             smooth: false,
             symbol: "none",
-            itemStyle: { color: "#ef4444" },
-            lineStyle: { color: "#ef4444", width: 3, type: "dashed" },
+            lineStyle: { color: "red", width: 3, type: "dashed" },
             z: 1,
             markPoint: {
               symbol: "none",
+              label: { show: true, formatter: "{b}" },
               data: [
                 {
                   coord: [ridgeOI * 4, PEAK_MIPS * 0.02],
-                  value: "Compute-Bound Region",
-                  label: { color: "rgba(239, 68, 68, 0.08)", fontSize: 26, fontWeight: "bold", fontFamily: "Inter, sans-serif" }
+                  name: "Compute-Bound",
+                  label: { color: "rgba(255, 0, 0, 0.08)", fontSize: 26, fontWeight: "bold", fontFamily: "Inter, sans-serif" }
                 },
                 {
                   coord: [ridgeOI * 4, PEAK_MIPS * 0.75],
-                  value: `Peak Compute Performance Roof: ${PEAK_MIPS.toLocaleString()} MIPS`,
+                  name: `Peak Compute: ${PEAK_MIPS.toLocaleString()} MIPS`,
                   label: { color: "#94a3b8", fontSize: 11, fontFamily: "Inter, sans-serif" }
                 }
               ]
@@ -162,7 +163,7 @@
             markLine: {
               symbol: ["none", "none"],
               lineStyle: { color: "#475569", width: 1, type: "dotted" },
-              label: { show: true, position: "start", formatter: "Ridge OI ≈ " + ridgeOI.toFixed(1), color: "#64748b", fontSize: 10, fontFamily: "Inter, sans-serif" },
+              label: { show: true, position: "start", formatter: "Ridge OI ≈ 100", color: "#64748b", fontSize: 10, fontFamily: "Inter, sans-serif" },
               data: [ { xAxis: ridgeOI } ]
             }
           },

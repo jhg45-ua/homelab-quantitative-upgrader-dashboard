@@ -40,7 +40,21 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
 
   const option = {
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'item', backgroundColor: '#0F172A', borderColor: '#334155', textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 } },
+    tooltip: { 
+      trigger: 'item', 
+      backgroundColor: '#0F172A', 
+      borderColor: '#334155', 
+      textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 },
+      formatter: (params: any) => {
+        if (params.seriesName === 'Live Workload') {
+          const [oi, mips] = params.data as [number, number];
+          return `<div class="font-mono text-[10px] uppercase text-slate-500 mb-1">Live Workload</div>
+                  <div class="flex justify-between gap-4"><span>OI:</span><span class="text-blue-400">${oi.toFixed(6)}</span></div>
+                  <div class="flex justify-between gap-4"><span>MIPS:</span><span class="text-blue-400">${mips.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span></div>`;
+        }
+        return params.seriesName;
+      }
+    },
     grid: { top: 30, right: 35, bottom: 40, left: 60 },
     xAxis: {
       type: 'log', name: 'OPERATIONAL INTENSITY (Ops/Byte)', nameLocation: 'middle', nameGap: 25, min: 0.01, max: 10000,

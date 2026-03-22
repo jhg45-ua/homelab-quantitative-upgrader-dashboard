@@ -117,7 +117,7 @@ export function Overview({ metrics, systemConfig }: Props) {
              <DatasheetCard title="CPU EFFICIENCY" value={(metrics.ipsPerW / 1e6).toFixed(1)} unit="M IPS/W" footer="Instr. per Watt" valueColor="text-teal-400" />
              <DatasheetCard title="MEMORY AMAT" value={metrics.amat.toFixed(2)} unit="cyc" footer="Avg Mem Access Time" />
              <DatasheetCard title="NUMA MISS RATE" value={metrics.numaMiss.toFixed(2)} unit="%" footer="Cross-node Fetches" />
-             <DatasheetCard title="TCP RETRANSMITS" value={metrics.tcpRetrans.toFixed(1)} unit="/s" footer="Network Reliability" />
+             <DatasheetCard title="TCP RETRANSMITS" value={metrics.tcpRetrans === 0 ? "0" : metrics.tcpRetrans.toFixed(1)} unit="/s" footer="Network Reliability" />
              <DatasheetCard title="SYSTEM UPTIME" value={formatUptime(metrics.uptimeSeconds)} unit="" footer="Dependability" valueColor="text-teal-400" />
           </div>
         </div>

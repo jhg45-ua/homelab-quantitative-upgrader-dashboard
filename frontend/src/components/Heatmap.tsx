@@ -19,7 +19,16 @@ export function Heatmap() {
 
   const option = {
     backgroundColor: 'transparent',
-    tooltip: { position: 'top', textStyle: { fontFamily: 'Space Grotesk, monospace', fontSize: 11 }, backgroundColor: '#0F172A', borderColor: '#334155' },
+    tooltip: { 
+      position: 'top', 
+      backgroundColor: '#0F172A', 
+      borderColor: '#334155',
+      textStyle: { fontFamily: 'Space Grotesk, monospace', fontSize: 11, color: '#F8FAFC' },
+      formatter: (params: any) => {
+        return `<div class="font-mono text-[10px] uppercase text-slate-500 mb-1">Latency Bucket</div>
+                <div class="flex justify-between gap-4"><span>Value:</span><span class="text-teal-400">${parseFloat(params.value[2]).toFixed(4)}</span></div>`;
+      }
+    },
     grid: { top: 10, right: 35, bottom: 25, left: 60 },
     xAxis: { type: 'category', data: xData, axisLabel: { fontFamily: 'Space Grotesk, monospace', fontSize: 10, color: '#94A3B8' }, splitArea: { show: true, areaStyle: { color: ['rgba(15,23,42,0.6)', 'rgba(30,41,59,0)'] } } },
     yAxis: { type: 'category', data: yData, axisLabel: { fontFamily: 'Space Grotesk, monospace', fontSize: 10, color: '#94A3B8' } },

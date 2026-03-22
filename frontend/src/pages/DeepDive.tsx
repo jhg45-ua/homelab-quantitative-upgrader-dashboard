@@ -53,16 +53,22 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
               <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
                 <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Queue Depth (blk_mq)</h3>
               </div>
-              <div className="flex-1 flex items-center justify-center p-3">
-                <span className="text-3xl md:text-4xl font-mono text-teal-400">{metrics.queueDepth > 0 ? metrics.queueDepth.toFixed(0) : '—'}</span>
+              <div className="flex-1 flex items-center justify-center p-3 text-center">
+                <span className="text-3xl md:text-4xl font-mono text-teal-400 leading-none">
+                  {metrics.queueDepth !== undefined ? metrics.queueDepth.toFixed(2) : '—'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">reqs</span>
               </div>
             </div>
             <div className="bg-slate-800 border border-slate-700 flex flex-col">
               <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
                 <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">IOPS (Real)</h3>
               </div>
-              <div className="flex-1 flex items-center justify-center p-3">
-                <span className="text-3xl md:text-4xl font-mono text-slate-100">{metrics.iops > 0 ? metrics.iops.toLocaleString() : '—'}</span>
+              <div className="flex-1 flex items-center justify-center p-3 text-center">
+                <span className="text-3xl md:text-4xl font-mono text-slate-100 leading-none">
+                  {metrics.iops !== undefined ? metrics.iops.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                </span>
+                <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">iops</span>
               </div>
             </div>
             {/* Mini charts */}

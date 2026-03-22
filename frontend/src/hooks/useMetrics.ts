@@ -1,17 +1,10 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import type { MetricsState, HistoryFrame, PromQLResponse, LogEntry } from '../types';
 
-/**
- * Derives TMA-like percentages from available metrics:
- * - High CPI + high cache miss → Back-End Bound
- * - High context switches → Bad Speculation proxy
- * - Remaining budget split between Retiring and Front-End
- */
 function deriveTMA(cpi: number, cacheMiss: number, ctxSwitches: number) {
-  // Normalize CPI: ideal is ~0.5, bad is >3
-  const cpiPenalty = Math.min(cpi / 3, 1); // 0..1
-  const cachePenalty = Math.min(cacheMiss / 50, 1); // 0..1
-  const ctxPenalty = Math.min(ctxSwitches / 50000, 1); // 0..1
+  const cpiPenalty = Math.min(cpi / 3, 1);
+  const cachePenalty = Math.min(cacheMiss / 50, 1);
+  const ctxPenalty = Math.min(ctxSwitches / 50000, 1);
 
   const backEnd = Math.round(Math.max(10, (cpiPenalty * 40 + cachePenalty * 30)));
   const badSpec = Math.round(Math.max(2, ctxPenalty * 15));
@@ -22,8 +15,6 @@ function deriveTMA(cpi: number, cacheMiss: number, ctxSwitches: number) {
 }
 
 export function useMetrics() {
-  const startTime = useRef(Date.now());
-
   const [metrics, setMetrics] = useState<MetricsState>({
     powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, tcpRetrans: 0,
     ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0, uptimeSeconds: 0,
@@ -43,8 +34,9 @@ export function useMetrics() {
     const fetchData = async () => {
       try {
         const HOST = 'r720-baremetal';
-        const q = async (query: string) => {
-          const res = await fetch(`/api/v1/query?query=${query}{host="${HOST}"}`);
+        const q = async (query: string, rawQuery = false) => {
+          const finalQuery = rawQuery ? query : `${query}{host="${HOST}"}`;
+          const res = await fetch(`/api/v1/query?query=${finalQuery}`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json: PromQLResponse = await res.json();
           if (!json.data || !json.data.result || json.data.result.length === 0) {
@@ -66,6 +58,10 @@ export function useMetrics() {
           q('hqud_cpu_cpi').catch(() => null),
           q('hqud_cpu_cache_miss_rate').catch(() => null),
           q('hqud_os_context_switches_ps').catch(() => null),
+          // v2.6.0: Real Uptime and Block metrics
+          q(`time() - node_boot_time_seconds{host="${HOST}"}`, true).catch(() => null),
+          q('hqud_blk_queue_depth').catch(() => null),
+          q('hqud_blk_iops').catch(() => null),
         ]);
 
         setMetrics(prev => {
@@ -73,11 +69,6 @@ export function useMetrics() {
           const cacheMiss = reqs[7] ?? prev.cacheMiss;
           const ctxSwitches = reqs[8] ?? prev.ctxSwitches;
           const tma = deriveTMA(cpi, cacheMiss, ctxSwitches);
-
-          // Derive uptime from agent connection time
-          const uptimeSeconds = (Date.now() - startTime.current) / 1000;
-
-          // Derive approximate contention from context switches (normalized)
           const mutexContention = Math.min(100, (ctxSwitches / 10000) * 100);
 
           const next: MetricsState = {
@@ -90,13 +81,13 @@ export function useMetrics() {
             cpi,
             cacheMiss,
             ctxSwitches,
-            uptimeSeconds,
+            uptimeSeconds: reqs[9] ?? prev.uptimeSeconds,
             tmaRetiring: tma.retiring,
             tmaBadSpec: tma.badSpec,
             tmaFrontEnd: tma.frontEnd,
             tmaBackEnd: tma.backEnd,
-            queueDepth: prev.queueDepth, // No source yet
-            iops: prev.iops, // No source yet
+            queueDepth: reqs[10] ?? prev.queueDepth,
+            iops: reqs[11] ?? prev.iops,
             mutexContention,
           };
 

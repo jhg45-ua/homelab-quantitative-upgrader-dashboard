@@ -1,10 +1,10 @@
 import ReactECharts from 'echarts-for-react';
+import { formatMetric } from '../utils/formatters';
 
 export function Heatmap() {
   const xData = ['0.1ms', '0.5ms', '1ms', '2ms', '5ms', '10ms', '25ms', '50ms', '100ms', '+Inf'];
   const yData = ['sda', 'sdb', 'nvme0n1', 'nvme1n1'];
   
-  // Generate random data for a 10x4 grid
   const data = [];
   for (let i = 0; i < xData.length; i++) {
     for (let j = 0; j < yData.length; j++) {
@@ -26,7 +26,7 @@ export function Heatmap() {
       textStyle: { fontFamily: 'Space Grotesk, monospace', fontSize: 11, color: '#F8FAFC' },
       formatter: (params: any) => {
         return `<div class="font-mono text-[10px] uppercase text-slate-500 mb-1">Latency Bucket</div>
-                <div class="flex justify-between gap-4"><span>Value:</span><span class="text-teal-400">${parseFloat(params.value[2]).toFixed(4)}</span></div>`;
+                <div class="flex justify-between gap-4"><span>Value:</span><span class="text-teal-400">${formatMetric(params.value[2])}</span></div>`;
       }
     },
     grid: { top: 10, right: 35, bottom: 25, left: 60 },
@@ -38,7 +38,7 @@ export function Heatmap() {
       type: 'heatmap',
       data: data,
       itemStyle: { borderColor: '#1E293B', borderWidth: 2 },
-      label: { show: true, fontFamily: 'Space Grotesk, monospace', fontSize: 10, fontWeight: 'bold', align: 'center', color: '#F8FAFC', formatter: (params: any) => Math.round(params.value[2]).toString() }
+      label: { show: true, fontFamily: 'Space Grotesk, monospace', fontSize: 10, fontWeight: 'bold', align: 'center', color: '#F8FAFC', formatter: (params: any) => formatMetric(params.value[2]) }
     }]
   };
 

@@ -5,6 +5,7 @@ import { RooflineChart } from '../components/RooflineChart';
 import { TMAChart } from '../components/TMAChart';
 import { AmdahlChart } from '../components/AmdahlChart';
 import type { MetricsState, HistoryFrame, SystemConfig } from '../types';
+import { formatMetric } from '../utils/formatters';
 
 interface Props {
   metrics: MetricsState;
@@ -48,29 +49,31 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
 
          {/* Row 3: Little's Law Cards + Timeline + Combo */}
          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
-            {/* Little's Law numeric cards */}
+            {/* Little's Law numeric cards - v2.6.1: Fixed Binding & Mocking */}
             <div className="bg-slate-800 border border-slate-700 flex flex-col">
               <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
                 <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Queue Depth (blk_mq)</h3>
               </div>
               <div className="flex-1 flex items-center justify-center p-3 text-center">
                 <span className="text-3xl md:text-4xl font-mono text-teal-400 leading-none">
-                  {metrics.queueDepth !== undefined ? metrics.queueDepth.toFixed(2) : '—'}
+                  {metrics.queueDepth !== undefined && metrics.queueDepth !== null ? formatMetric(metrics.queueDepth) : '-'}
                 </span>
                 <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">reqs</span>
               </div>
             </div>
+
             <div className="bg-slate-800 border border-slate-700 flex flex-col">
               <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
                 <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">IOPS (Real)</h3>
               </div>
               <div className="flex-1 flex items-center justify-center p-3 text-center">
                 <span className="text-3xl md:text-4xl font-mono text-slate-100 leading-none">
-                  {metrics.iops !== undefined ? metrics.iops.toLocaleString(undefined, { maximumFractionDigits: 0 }) : '—'}
+                  {metrics.iops !== undefined && metrics.iops !== null ? formatMetric(metrics.iops) : '-'}
                 </span>
                 <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">iops</span>
               </div>
             </div>
+
             {/* Mini charts */}
             <div className="h-40 md:h-48">
                <TimelineChart history={history} />

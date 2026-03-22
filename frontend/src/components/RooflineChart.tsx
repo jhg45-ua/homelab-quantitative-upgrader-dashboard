@@ -1,4 +1,5 @@
 import ReactECharts from 'echarts-for-react';
+import { formatMetric } from '../utils/formatters';
 
 interface Props {
   ips: number;
@@ -18,16 +19,13 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
   }
   const safeMIPS = Math.max(1, ips / 1e6);
 
-  // BW slope line: from OI=0.01 up to the ridge point
   const bwLineData: [number, number][] = [];
   for (let oi = 0.01; oi <= ridgeOI * 1.1; oi *= 1.12) {
     const perf = (oi * ((PEAK_BW_GBS * 1e9) / 64)) / 1e6;
     bwLineData.push([oi, Math.min(perf, PEAK_MIPS)]);
   }
-  // Make sure we hit the ridge point exactly
   bwLineData.push([ridgeOI, PEAK_MIPS]);
 
-  // Compute ceiling: flat line from ridge point to the right edge
   const computeLineData: [number, number][] = [];
   computeLineData.push([ridgeOI, PEAK_MIPS]);
   for (let oi = ridgeOI * 1.3; oi <= 10000; oi *= 1.5) {
@@ -35,7 +33,6 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
   }
   computeLineData.push([10000, PEAK_MIPS]);
 
-  // Y-axis max should accommodate peak MIPS with some headroom
   const yMax = Math.pow(10, Math.ceil(Math.log10(PEAK_MIPS * 1.5)));
 
   const option = {
@@ -49,8 +46,8 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
         if (params.seriesName === 'Live Workload') {
           const [oi, mips] = params.data as [number, number];
           return `<div class="font-mono text-[10px] uppercase text-slate-500 mb-1">Live Workload</div>
-                  <div class="flex justify-between gap-4"><span>OI:</span><span class="text-blue-400">${oi.toFixed(6)}</span></div>
-                  <div class="flex justify-between gap-4"><span>MIPS:</span><span class="text-blue-400">${mips.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span></div>`;
+                  <div class="flex justify-between gap-4"><span>OI:</span><span class="text-blue-400">${formatMetric(oi)}</span></div>
+                  <div class="flex justify-between gap-4"><span>MIPS:</span><span class="text-blue-400">${formatMetric(mips)}</span></div>`;
         }
         return params.seriesName;
       }

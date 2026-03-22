@@ -221,7 +221,18 @@ func main() {
 		log.Printf("[Proxy Error] Failed to route %s to VictoriaMetrics: %v", r.URL.Path, err)
 		http.Error(w, "TSDB Proxy Error", http.StatusBadGateway)
 	}
-	mux.Handle("/api/", proxy) // Capture any API requests not handled by exact matches like /api/health
+
+	proxyLoggerMiddleware := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/api/v1/query" {
+				query := r.URL.Query().Get("query")
+				log.Printf(`[INFO] Proxy Request - Endpoint: %s, Query: "%s"`, r.URL.Path, query)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	mux.Handle("/api/", proxyLoggerMiddleware(proxy)) // Capture any API requests not handled by exact matches like /api/health
 
 	spa := spaHandler{staticPath: frontendBuildDir(), indexPath: "index.html"}
 	mux.Handle("/", spa)

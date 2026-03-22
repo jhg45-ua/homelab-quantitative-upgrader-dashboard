@@ -1,6 +1,7 @@
 import { Route, Switch, useLocation } from 'wouter';
 import { LayoutDashboard, Terminal, Activity, BookOpen } from 'lucide-preact';
 import { useMetrics } from './hooks/useMetrics';
+import { useSystemConfig } from './hooks/useSystemConfig';
 
 import { Overview } from './pages/Overview';
 import { DeepDive } from './pages/DeepDive';
@@ -9,6 +10,7 @@ import { Wiki } from './pages/Wiki';
 
 export function App() {
   const { metrics, history, logs } = useMetrics();
+  const systemConfig = useSystemConfig();
   const [location, setLocation] = useLocation();
 
   const navLink = (path: string, label: string, Icon: any) => {
@@ -26,10 +28,9 @@ export function App() {
   return (
     <div className="flex h-screen bg-slate-900 text-slate-100 font-sans antialiased overflow-hidden">
       
-      {/* Sidebar - Foundry Dark Mode */}
       <aside className="w-16 md:w-64 bg-slate-950 flex flex-col z-10 border-r border-slate-800 shrink-0">
         <div className="p-4 md:p-6 border-b border-slate-800">
-          <h1 className="text-slate-100 text-xs md:text-sm font-semibold tracking-tight uppercase hidden md:block">Modular Architect</h1>
+          <h1 className="text-slate-100 text-xs md:text-sm font-semibold tracking-tight uppercase hidden md:block">HQUD Foundry</h1>
           <Terminal size={24} className="text-slate-100 md:hidden mx-auto" />
           <p className="text-slate-400 text-[10px] md:text-xs mt-1 font-mono uppercase hidden md:block">NODE::R720-BAREMETAL</p>
         </div>
@@ -47,15 +48,14 @@ export function App() {
         </div>
       </aside>
 
-      {/* Main Routing Area */}
       <main className="flex-1 flex flex-col h-screen overflow-y-auto w-full relative">
         <Switch>
-          <Route path="/"><Overview metrics={metrics} /></Route>
+          <Route path="/"><Overview metrics={metrics} systemConfig={systemConfig} /></Route>
           <Route path="/deep-dive"><DeepDive metrics={metrics} history={history} /></Route>
           <Route path="/console"><Console logs={logs} /></Route>
           <Route path="/wiki"><Wiki /></Route>
           <Route>
-             <div className="p-8 text-slate-400 font-mono italic">404 VISTA DESTRUCTORA DE KERNEL...</div>
+             <div className="p-8 text-slate-400 font-mono italic">404 — Route not found</div>
           </Route>
         </Switch>
       </main>

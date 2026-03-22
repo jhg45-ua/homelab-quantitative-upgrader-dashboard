@@ -4,7 +4,7 @@ import type { MetricsState, HistoryFrame, PromQLResponse, LogEntry } from '../ty
 export function useMetrics() {
   const [metrics, setMetrics] = useState<MetricsState>({
     powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, tcpRetrans: 0,
-    ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0,
+    ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0, uptimeSeconds: 0,
   });
 
   const [history, setHistory] = useState<HistoryFrame[]>([]);
@@ -23,7 +23,6 @@ export function useMetrics() {
           const res = await fetch(`/api/v1/query?query=${query}{host="${HOST}"}`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json: PromQLResponse = await res.json();
-          // Null-Safety check:
           if (!json.data || !json.data.result || json.data.result.length === 0) {
             pushLog('WARN', `Data empty for ${query}`);
             return null;
@@ -43,7 +42,8 @@ export function useMetrics() {
           q('hqud_cpu_ips').catch(() => null),
           q('hqud_cpu_cpi').catch(() => null),
           q('hqud_cpu_cache_miss_rate').catch(() => null),
-          q('hqud_os_context_switches_ps').catch(() => null)
+          q('hqud_os_context_switches_ps').catch(() => null),
+          q('hqud_system_uptime_seconds').catch(() => null)
         ]);
 
         setMetrics(prev => {
@@ -56,7 +56,8 @@ export function useMetrics() {
             ips: reqs[5] ?? prev.ips,
             cpi: reqs[6] ?? prev.cpi,
             cacheMiss: reqs[7] ?? prev.cacheMiss,
-            ctxSwitches: reqs[8] ?? prev.ctxSwitches
+            ctxSwitches: reqs[8] ?? prev.ctxSwitches,
+            uptimeSeconds: reqs[9] ?? prev.uptimeSeconds
           };
 
           const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -72,7 +73,7 @@ export function useMetrics() {
       }
     };
 
-    fetchData(); // Initial load
+    fetchData();
     const iv = setInterval(fetchData, 5000);
     return () => clearInterval(iv);
   }, []);

@@ -43,7 +43,7 @@ export function RooflineChart({ ips, cacheMiss }: Props) {
     series: [
       { name: 'Memory BW Roof', type: 'line', data: bwLineData, symbol: 'none', lineStyle: { color: '#0D9488', width: 3, type: 'solid' } },
       { name: 'Compute Roof', type: 'line', data: computeLineData, symbol: 'none', lineStyle: { color: '#DC2626', width: 3, type: 'solid' } },
-      { name: 'Live Workload', type: 'scatter', data: [[safeOI, safeMIPS]], symbolSize: 18, itemStyle: { color: '#0055ff', shadowBlur: 20, shadowColor: '#0ea5e9', borderColor: '#62fae3', borderWidth: 2 } }
+      { name: 'Live Workload', type: 'scatter', data: [[safeOI, safeMIPS]], symbolSize: 14, itemStyle: { color: '#3B82F6', borderColor: '#93C5FD', borderWidth: 2 } }
     ]
   };
 

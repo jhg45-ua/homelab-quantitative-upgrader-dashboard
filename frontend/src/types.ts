@@ -21,6 +21,7 @@ export interface MetricsState {
   cpi: number;
   cacheMiss: number;
   ctxSwitches: number;
+  uptimeSeconds: number;
 }
 
 export interface HistoryFrame {
@@ -34,4 +35,14 @@ export interface LogEntry {
   timestamp: string;
   level: 'INFO' | 'WARN' | 'ERROR';
   message: string;
+}
+
+export interface SystemConfig {
+  node_name: string;
+  hardware_desc: string;
+  specs: {
+    cores: number;
+    peak_mips: number;
+    max_mem_bw_gbps: number;
+  };
 }

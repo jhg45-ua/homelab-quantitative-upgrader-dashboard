@@ -47,39 +47,49 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
             </div>
          </div>
 
-         {/* Row 3: Little's Law Cards + Timeline + Combo */}
-         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
-            {/* Little's Law numeric cards - v2.6.1: Fixed Binding & Mocking */}
+         {/* Row 3: Little's Law Panel + Mini charts */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-8">
+            {/* Little's Law: L = λW */}
             <div className="bg-slate-800 border border-slate-700 flex flex-col">
-              <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
-                <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Queue Depth (blk_mq)</h3>
+              <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0 flex items-center justify-between">
+                <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-300 uppercase">Little's Law: L = λW</h3>
+                <span className="text-[8px] font-mono text-amber-400 border border-amber-500/40 px-1 bg-amber-500/10">IN-FLIGHT LATENCY</span>
               </div>
-              <div className="flex-1 flex items-center justify-center p-3 text-center">
-                <span className="text-3xl md:text-4xl font-mono text-teal-400 leading-none">
-                  {metrics.queueDepth !== null ? formatMetric(metrics.queueDepth) : '-'}
-                </span>
-                <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">reqs</span>
+              <div className="flex-1 flex items-center justify-around p-4 gap-2">
+                {(() => {
+                  const L = metrics.queueDepth ?? 0;
+                  const lambda = metrics.iops ?? 0;
+                  const W = lambda > 0 ? (L / lambda) * 1000 : 0;
+                  return (
+                    <>
+                      <div className="text-center">
+                        <div className="text-2xl md:text-3xl font-mono text-white">{metrics.queueDepth !== null ? formatMetric(L) : '-'}</div>
+                        <div className="text-[9px] font-mono text-slate-500 mt-1 uppercase tracking-widest">L (Queue)</div>
+                      </div>
+                      <div className="text-slate-600 text-xl font-mono">=</div>
+                      <div className="text-center">
+                        <div className="text-2xl md:text-3xl font-mono text-white">{metrics.iops !== null ? formatMetric(lambda) : '-'}</div>
+                        <div className="text-[9px] font-mono text-slate-500 mt-1 uppercase tracking-widest">λ (IOPS)</div>
+                      </div>
+                      <div className="text-slate-600 text-xl font-mono">×</div>
+                      <div className="text-center">
+                        <div className="text-2xl md:text-3xl font-mono text-teal-400 font-bold">{formatMetric(W)}<span className="text-sm ml-0.5">ms</span></div>
+                        <div className="text-[9px] font-mono text-teal-600 mt-1 uppercase tracking-widest">W (Latency)</div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 
-            <div className="bg-slate-800 border border-slate-700 flex flex-col">
-              <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
-                <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">IOPS (Real)</h3>
+            {/* Mini charts side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="h-40 md:h-48">
+                 <TimelineChart history={history} />
               </div>
-              <div className="flex-1 flex items-center justify-center p-3 text-center">
-                <span className="text-3xl md:text-4xl font-mono text-slate-100 leading-none">
-                  {metrics.iops !== null ? formatMetric(metrics.iops) : '-'}
-                </span>
-                <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">iops</span>
+              <div className="h-40 md:h-48">
+                 <ComboChart history={history} />
               </div>
-            </div>
-
-            {/* Mini charts */}
-            <div className="h-40 md:h-48">
-               <TimelineChart history={history} />
-            </div>
-            <div className="h-40 md:h-48">
-               <ComboChart history={history} />
             </div>
          </div>
 

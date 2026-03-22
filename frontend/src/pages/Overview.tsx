@@ -18,6 +18,32 @@ function generateAuditReport(metrics: MetricsState, config: SystemConfig | null)
   const peakMips = config?.specs.peak_mips ?? 0;
   const memBw = config?.specs.max_mem_bw_gbps ?? 0;
 
+  // --- Hardware Upgrade Recommendation Engine ---
+  const cpi = metrics.cpi;
+  const amat = metrics.amat;
+  const queueDepth = metrics.queueDepth ?? 0;
+  const iops = metrics.iops ?? 0;
+  const inferredLatencyMs = iops > 0 ? (queueDepth / iops) * 1000 : 0;
+
+  const cpuRec = cpi > 1.5
+    ? `<tr class="warn"><td>CPU Subsystem</td><td>High CPI (${formatMetric(cpi)}). Pipeline stalls detected. Consider upgrading to a modern µArch or vectorizing hot workloads.</td><td class="badge-warn">UPGRADE RECOMMENDED</td></tr>`
+    : `<tr class="ok"><td>CPU Subsystem</td><td>Efficient CPI (${formatMetric(cpi)}). No immediate upgrade needed.</td><td class="badge-ok">OPTIMAL</td></tr>`;
+
+  const memRec = amat > 15
+    ? `<tr class="warn"><td>Memory / NUMA</td><td>High AMAT (${formatMetric(amat)} cyc). Consider higher-speed ECC RAM or strict NUMA CPU pinning via cpuset.</td><td class="badge-warn">TUNING REQUIRED</td></tr>`
+    : `<tr class="ok"><td>Memory / NUMA</td><td>AMAT is healthy (${formatMetric(amat)} cyc). Memory hierarchy within spec.</td><td class="badge-ok">OPTIMAL</td></tr>`;
+
+  const ioRec = queueDepth > 5 && inferredLatencyMs > 20
+    ? `<tr class="crit"><td>Storage I/O</td><td>Disk bottleneck detected. Little's Law W = ${inferredLatencyMs.toFixed(1)} ms with queue depth ${formatMetric(queueDepth)}. NVMe upgrade strongly recommended.</td><td class="badge-crit">CRITICAL UPGRADE</td></tr>`
+    : `<tr class="ok"><td>Storage I/O</td><td>I/O latency within acceptable bounds (W ≈ ${inferredLatencyMs.toFixed(1)} ms). No storage upgrade needed.</td><td class="badge-ok">OPTIMAL</td></tr>`;
+
+  const upgradeSection = `
+  <div class="section-title" style="margin-top:40px">Hardware Upgrade Analysis</div>
+  <table>
+    <thead><tr><th>Subsystem</th><th>Assessment</th><th>Verdict</th></tr></thead>
+    <tbody>${cpuRec}${memRec}${ioRec}</tbody>
+  </table>`;
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,6 +80,14 @@ function generateAuditReport(metrics: MetricsState, config: SystemConfig | null)
     .tma-legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
     .tma-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #374151; font-family: 'Inter', sans-serif; }
     .tma-dot { width: 10px; height: 10px; flex-shrink: 0; border-radius: 2px; }
+
+    /* Upgrade analysis verdict styles */
+    tr.ok td { color: #111827; }
+    tr.warn td { color: #92400E; background: #FFFBEB; }
+    tr.crit td { color: #7F1D1D; background: #FEF2F2; font-weight: 600; }
+    .badge-ok { color: #059669; font-weight: 700; font-family: 'Inter', sans-serif; white-space: nowrap; }
+    .badge-warn { color: #D97706; font-weight: 700; font-family: 'Inter', sans-serif; white-space: nowrap; }
+    .badge-crit { color: #DC2626; font-weight: 700; font-family: 'Inter', sans-serif; white-space: nowrap; }
     
     .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #9CA3AF; font-family: 'JetBrains Mono', monospace; display: flex; justify-content: space-between; }
     
@@ -109,6 +143,7 @@ function generateAuditReport(metrics: MetricsState, config: SystemConfig | null)
     <div class="tma-legend-item"><div class="tma-dot" style="background:#ef4444"></div> Back-End Bound (${metrics.tmaBackEnd}%)</div>
   </div>
 
+  ${upgradeSection}
   <div class="footer">
     <span>HQUD Foundry v2.6.6 — Auto-generated</span>
     <span>${isoTs}</span>

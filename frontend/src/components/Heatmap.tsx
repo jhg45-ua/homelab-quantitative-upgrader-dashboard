@@ -1,44 +1,102 @@
 import ReactECharts from 'echarts-for-react';
+import { useState, useEffect } from 'preact/hooks';
 import { formatMetric } from '../utils/formatters';
 
+const HOST = 'r720-baremetal';
+const LATENCY_BUCKETS = ['0.1ms', '0.5ms', '1ms', '2ms', '5ms', '10ms', '25ms', '50ms', '100ms', '+Inf'];
+
 export function Heatmap() {
-  const xData = ['0.1ms', '0.5ms', '1ms', '2ms', '5ms', '10ms', '25ms', '50ms', '100ms', '+Inf'];
-  const yData = ['sda', 'sdb', 'nvme0n1', 'nvme1n1'];
-  
-  const data = [];
-  for (let i = 0; i < xData.length; i++) {
-    for (let j = 0; j < yData.length; j++) {
-      const isNvme = j >= 2;
-      let val = 0;
-      if (isNvme && i < 4) val = Math.random() * 80 + 20;
-      else if (!isNvme && i >= 3 && i < 8) val = Math.random() * 80 + 20;
-      else val = Math.random() * 10;
-      data.push([i, j, val > 0 ? val : 0]);
-    }
-  }
+  const [devices, setDevices] = useState<string[]>(['sda']);
+  const [data, setData] = useState<[number, number, number][]>([]);
+
+  useEffect(() => {
+    const fetchLatency = async () => {
+      try {
+        const res = await fetch(
+          `/api/v1/query?query=${encodeURIComponent(`hqud_io_latency_usec_bucket{host="${HOST}"}`)}`
+        );
+        const json = await res.json();
+        const results: any[] = json?.data?.result ?? [];
+
+        if (results.length === 0) {
+          // No data yet — render an empty placeholder row
+          setDevices(['(no io data)']);
+          setData(LATENCY_BUCKETS.map((_, i) => [i, 0, 0]));
+          return;
+        }
+
+        // Extract unique device names from PromQL labels
+        const uniqueDevices = Array.from(new Set(
+          results.map((s: any) => s.metric?.device ?? s.metric?.modulo ?? 'unknown')
+        ));
+        setDevices(uniqueDevices);
+
+        // Build heatmap data: [bucketIndex, deviceIndex, value]
+        // The `le` label maps to the bucket index
+        const bucketMap: Record<string, number> = {};
+        LATENCY_BUCKETS.forEach((b, i) => { bucketMap[b] = i; });
+        // Also map numeric us values to bucket indices
+        const leToIdx: Record<string, number> = {
+          '0': 0, '1': 1, '2': 2, '4': 3, '8': 4,
+          '16': 5, '32': 6, '64': 7, '128': 8, '+Inf': 9,
+        };
+
+        const heatData: [number, number, number][] = [];
+        results.forEach((series: any) => {
+          const dev = series.metric?.device ?? series.metric?.modulo ?? 'unknown';
+          const devIdx = uniqueDevices.indexOf(dev);
+          const le = String(series.metric?.le ?? '+Inf');
+          const bucketIdx = leToIdx[le] ?? bucketMap[le] ?? 9;
+          const val = parseFloat(series.value?.[1] ?? '0');
+          heatData.push([bucketIdx, devIdx, isNaN(val) ? 0 : val]);
+        });
+
+        setData(heatData);
+      } catch (e) {
+        console.warn('[Heatmap] fetch failed', e);
+      }
+    };
+
+    fetchLatency();
+    const iv = setInterval(fetchLatency, 10000);
+    return () => clearInterval(iv);
+  }, []);
 
   const option = {
     backgroundColor: 'transparent',
-    tooltip: { 
-      position: 'top', 
-      backgroundColor: '#0F172A', 
+    tooltip: {
+      position: 'top',
+      backgroundColor: '#0F172A',
       borderColor: '#334155',
       textStyle: { fontFamily: 'Space Grotesk, monospace', fontSize: 11, color: '#F8FAFC' },
-      formatter: (params: any) => {
-        return `<div class="font-mono text-[10px] uppercase text-slate-500 mb-1">Latency Bucket</div>
-                <div class="flex justify-between gap-4"><span>Value:</span><span class="text-teal-400">${formatMetric(params.value[2])}</span></div>`;
-      }
+      formatter: (params: any) =>
+        `<div class="font-mono text-[10px] uppercase text-slate-500 mb-1">${LATENCY_BUCKETS[params.value[0]]} — ${devices[params.value[1]]}</div>` +
+        `<div class="flex justify-between gap-4"><span>Count:</span><span class="text-teal-400">${formatMetric(params.value[2])}</span></div>`,
     },
-    grid: { top: 10, right: 35, bottom: 25, left: 60 },
-    xAxis: { type: 'category', data: xData, axisLabel: { fontFamily: 'Space Grotesk, monospace', fontSize: 10, color: '#94A3B8' }, splitArea: { show: true, areaStyle: { color: ['rgba(15,23,42,0.6)', 'rgba(30,41,59,0)'] } } },
-    yAxis: { type: 'category', data: yData, axisLabel: { fontFamily: 'Space Grotesk, monospace', fontSize: 10, color: '#94A3B8' } },
-    visualMap: { min: 0, max: 100, calculable: false, orient: 'horizontal', left: 'center', bottom: -10, inRange: { color: ['#1e3a8a', '#0ea5e9', '#0D9488', '#eab308', '#DC2626'] }, show: false },
+    grid: { top: 10, right: 35, bottom: 25, left: 70 },
+    xAxis: {
+      type: 'category', data: LATENCY_BUCKETS,
+      axisLabel: { fontFamily: 'Space Grotesk, monospace', fontSize: 10, color: '#94A3B8' },
+      splitArea: { show: true, areaStyle: { color: ['rgba(15,23,42,0.6)', 'rgba(30,41,59,0)'] } }
+    },
+    yAxis: {
+      type: 'category', data: devices,
+      axisLabel: { fontFamily: 'Space Grotesk, monospace', fontSize: 10, color: '#94A3B8' }
+    },
+    visualMap: {
+      min: 0, max: 500, calculable: false, orient: 'horizontal', show: false,
+      inRange: { color: ['#1e3a8a', '#0ea5e9', '#0D9488', '#eab308', '#DC2626'] }
+    },
     series: [{
       name: 'Block IO',
       type: 'heatmap',
       data: data,
       itemStyle: { borderColor: '#1E293B', borderWidth: 2 },
-      label: { show: true, fontFamily: 'Space Grotesk, monospace', fontSize: 10, fontWeight: 'bold', align: 'center', color: '#F8FAFC', formatter: (params: any) => formatMetric(params.value[2]) }
+      label: {
+        show: true, fontFamily: 'Space Grotesk, monospace', fontSize: 9, fontWeight: 'bold',
+        align: 'center', color: '#F8FAFC',
+        formatter: (params: any) => params.value[2] > 0 ? formatMetric(params.value[2]) : ''
+      }
     }]
   };
 

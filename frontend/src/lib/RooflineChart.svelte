@@ -237,16 +237,15 @@
       }
       const ips = eff * watts;
 
-      if (ips <= 0 || missRate <= 0) return;
-
-      const oi = 100.0 / missRate;
-      const mips = ips / 1e6;
+      let safeOI = 1000.0;
+      if (missRate > 0) {
+        safeOI = Math.max(0.01, 100.0 / missRate);
+      }
+      const safeMIPS = Math.max(1, ips / 1e6);
 
       chart.setOption({
         series: [
-          { name: "Memory BW Roof" },
-          { name: "Compute Roof" },
-          { name: "Workload", data: [[oi, mips]] },
+          { name: "Workload", data: [[safeOI, safeMIPS]] },
         ],
       });
     } catch (e) {

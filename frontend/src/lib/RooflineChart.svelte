@@ -233,9 +233,7 @@
       if (missRate > 0) {
         safeOI = Math.max(0.01, 100.0 / missRate);
       }
-      const safeMIPS = Math.max(1, ips / 1e6);
-
-      console.log('Roofline Debug - MIPS:', safeMIPS, 'Raw Data:', ipsR);
+      const safeMIPS = Math.max(1, ips);
 
       chart.setOption({
         series: [

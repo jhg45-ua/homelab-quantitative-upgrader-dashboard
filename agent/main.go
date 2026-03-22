@@ -137,25 +137,6 @@ func main() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	// Push boot time once at startup — used by frontend for uptime calculation
-	// Uses sysinfo(2) to get uptime in seconds (no Node Exporter dependency)
-	var info syscall.Sysinfo_t
-	if err := syscall.Sysinfo(&info); err == nil {
-		bootEpoch := float64(time.Now().Unix()) - float64(info.Uptime)
-		go func(v float64) {
-			if err := tsdbClient.Push([]tsdb.Metric{{
-				Name:   "hqud_system_boot_time",
-				Labels: map[string]string{"host": cfg.Agent.NodeName, "modulo": "os_sysinfo"},
-				Value:  v, Timestamp: time.Now(),
-			}}); err != nil {
-				log.Printf("TSDB push boot time failed: %v", err)
-			}
-		}(bootEpoch)
-		log.Printf("[uptime] Boot epoch: %.0f (uptime: %ds)", bootEpoch, info.Uptime)
-	} else {
-		log.Printf("[WARN] sysinfo failed: %v", err)
-	}
-
 	// Track previous completed ops count for IOPS delta
 	var prevCompletedOps uint64 = 0
 
@@ -220,7 +201,23 @@ func main() {
 			log.Println("...No I/O events recorded...")
 		}
 
-		// --- MODULE G: Block Queue Depth + IOPS from blk_queue_stats BPF map ---
+		// --- MODULE G: System Uptime (pushed every tick so VictoriaMetrics never expires it) ---
+		var sysinfo syscall.Sysinfo_t
+		if siErr := syscall.Sysinfo(&sysinfo); siErr == nil {
+			uptimeSec := float64(sysinfo.Uptime)
+			go func(v float64) {
+				if err := tsdbClient.Push([]tsdb.Metric{{
+					Name:   "hqud_os_uptime_seconds",
+					Labels: map[string]string{"host": cfg.Agent.NodeName, "modulo": "os_sysinfo"},
+					Value:  v, Timestamp: now,
+				}}); err != nil {
+					log.Printf("TSDB push uptime failed: %v", err)
+				}
+			}(uptimeSec)
+			log.Printf("--- System Uptime: %.0fs (%.1fh) ---", uptimeSec, uptimeSec/3600)
+		}
+
+		// --- MODULE H: Block Queue Depth + IOPS from blk_queue_stats BPF map ---
 		var queueKey0, queueKey1 uint32 = 0, 1
 		var inflight, completedOps uint64
 		queueDepthOK := objs.BlkQueueStats.Lookup(queueKey0, &inflight) == nil

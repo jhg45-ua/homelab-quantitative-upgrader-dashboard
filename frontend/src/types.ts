@@ -1,6 +1,6 @@
 export interface PromQLResult {
   metric: Record<string, string>;
-  value: [number, string]; // [timestamp, valueString]
+  value: [number, string];
 }
 
 export interface PromQLResponse {
@@ -22,6 +22,13 @@ export interface MetricsState {
   cacheMiss: number;
   ctxSwitches: number;
   uptimeSeconds: number;
+  tmaRetiring: number;
+  tmaBadSpec: number;
+  tmaFrontEnd: number;
+  tmaBackEnd: number;
+  queueDepth: number;
+  iops: number;
+  mutexContention: number;
 }
 
 export interface HistoryFrame {
@@ -29,6 +36,7 @@ export interface HistoryFrame {
   cpi: number;
   cacheMiss: number;
   ctxSwitches: number;
+  mutexContention: number;
 }
 
 export interface LogEntry {

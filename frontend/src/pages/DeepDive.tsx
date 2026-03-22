@@ -2,6 +2,8 @@ import { Heatmap } from '../components/Heatmap';
 import { ComboChart } from '../components/ComboChart';
 import { TimelineChart } from '../components/TimelineChart';
 import { RooflineChart } from '../components/RooflineChart';
+import { TMAChart } from '../components/TMAChart';
+import { AmdahlChart } from '../components/AmdahlChart';
 import type { MetricsState, HistoryFrame } from '../types';
 
 interface Props {
@@ -21,23 +23,52 @@ export function DeepDive({ metrics, history }: Props) {
         </span>
       </header>
 
-      <div className="p-2 md:p-4 flex-1 flex flex-col gap-4 w-full max-w-[1800px] mx-auto">
-         {/* ECharts SVG Rendered Grids */}
+      <div className="p-2 md:p-4 flex-1 flex flex-col gap-3 w-full max-w-[1800px] mx-auto">
          
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="h-72 md:h-[450px]">
+         {/* Row 1: Roofline + Heatmap */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="h-72 md:h-[420px]">
                <RooflineChart ips={metrics.ips} cacheMiss={metrics.cacheMiss} />
             </div>
-            <div className="h-72 md:h-[450px]">
+            <div className="h-72 md:h-[420px]">
                <Heatmap />
             </div>
          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-12">
-            <div className="h-64 md:h-80">
+         {/* Row 2: TMA + Amdahl */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="h-48 md:h-56">
+               <TMAChart metrics={metrics} />
+            </div>
+            <div className="h-48 md:h-56">
+               <AmdahlChart history={history} />
+            </div>
+         </div>
+
+         {/* Row 3: Little's Law Cards + Timeline + Combo */}
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pb-8">
+            {/* Little's Law numeric cards */}
+            <div className="bg-slate-800 border border-slate-700 flex flex-col">
+              <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
+                <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Queue Depth (blk_mq)</h3>
+              </div>
+              <div className="flex-1 flex items-center justify-center p-3">
+                <span className="text-3xl md:text-4xl font-mono text-teal-400">{metrics.queueDepth > 0 ? metrics.queueDepth.toFixed(0) : '—'}</span>
+              </div>
+            </div>
+            <div className="bg-slate-800 border border-slate-700 flex flex-col">
+              <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 shrink-0">
+                <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">IOPS (Real)</h3>
+              </div>
+              <div className="flex-1 flex items-center justify-center p-3">
+                <span className="text-3xl md:text-4xl font-mono text-slate-100">{metrics.iops > 0 ? metrics.iops.toLocaleString() : '—'}</span>
+              </div>
+            </div>
+            {/* Mini charts */}
+            <div className="h-40 md:h-48">
                <TimelineChart history={history} />
             </div>
-            <div className="h-64 md:h-80">
+            <div className="h-40 md:h-48">
                <ComboChart history={history} />
             </div>
          </div>

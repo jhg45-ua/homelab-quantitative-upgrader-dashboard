@@ -5,6 +5,8 @@ export function useMetrics() {
   const [metrics, setMetrics] = useState<MetricsState>({
     powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, tcpRetrans: 0,
     ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0, uptimeSeconds: 0,
+    tmaRetiring: 25, tmaBadSpec: 5, tmaFrontEnd: 10, tmaBackEnd: 60,
+    queueDepth: 0, iops: 0, mutexContention: 0,
   });
 
   const [history, setHistory] = useState<HistoryFrame[]>([]);
@@ -43,11 +45,18 @@ export function useMetrics() {
           q('hqud_cpu_cpi').catch(() => null),
           q('hqud_cpu_cache_miss_rate').catch(() => null),
           q('hqud_os_context_switches_ps').catch(() => null),
-          q('hqud_system_uptime_seconds').catch(() => null)
+          q('hqud_system_uptime_seconds').catch(() => null),
+          q('hqud_tma_retiring_pct').catch(() => null),
+          q('hqud_tma_bad_speculation_pct').catch(() => null),
+          q('hqud_tma_frontend_bound_pct').catch(() => null),
+          q('hqud_tma_backend_bound_pct').catch(() => null),
+          q('hqud_blk_queue_depth').catch(() => null),
+          q('hqud_blk_iops').catch(() => null),
+          q('hqud_mutex_contention_pct').catch(() => null),
         ]);
 
         setMetrics(prev => {
-          const next = {
+          const next: MetricsState = {
             powerW: reqs[0] ?? prev.powerW,
             ipsPerW: reqs[1] ?? prev.ipsPerW,
             amat: reqs[2] ?? prev.amat,
@@ -57,12 +66,20 @@ export function useMetrics() {
             cpi: reqs[6] ?? prev.cpi,
             cacheMiss: reqs[7] ?? prev.cacheMiss,
             ctxSwitches: reqs[8] ?? prev.ctxSwitches,
-            uptimeSeconds: reqs[9] ?? prev.uptimeSeconds
+            uptimeSeconds: reqs[9] ?? prev.uptimeSeconds,
+            tmaRetiring: reqs[10] ?? prev.tmaRetiring,
+            tmaBadSpec: reqs[11] ?? prev.tmaBadSpec,
+            tmaFrontEnd: reqs[12] ?? prev.tmaFrontEnd,
+            tmaBackEnd: reqs[13] ?? prev.tmaBackEnd,
+            queueDepth: reqs[14] ?? prev.queueDepth,
+            iops: reqs[15] ?? prev.iops,
+            mutexContention: reqs[16] ?? prev.mutexContention,
           };
 
           const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
           setHistory(hPrev => [...hPrev, {
-            time: ts, cpi: next.cpi, cacheMiss: next.cacheMiss, ctxSwitches: next.ctxSwitches
+            time: ts, cpi: next.cpi, cacheMiss: next.cacheMiss,
+            ctxSwitches: next.ctxSwitches, mutexContention: next.mutexContention,
           }].slice(-20));
 
           return next;

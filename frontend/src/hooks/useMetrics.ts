@@ -64,7 +64,7 @@ export function useMetrics() {
           fetchMetric('hqud_cpu_cpi'),
           fetchMetric('hqud_cpu_cache_miss_rate'),
           fetchMetric('hqud_os_context_switches_ps'),
-          fetchMetric('uptime', `time() - node_boot_time_seconds{host="${HOST}"}`),
+          fetchMetric('uptime', `time() - hqud_system_boot_time{host="${HOST}"}`),
           fetchMetric('hqud_blk_queue_depth'),
           fetchMetric('hqud_blk_iops'),
         ]);

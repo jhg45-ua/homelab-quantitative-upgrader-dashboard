@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/cilium/ebpf/link"
@@ -136,6 +137,28 @@ func main() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
+	// Push boot time once at startup — used by frontend for uptime calculation
+	// Uses sysinfo(2) to get uptime in seconds (no Node Exporter dependency)
+	var info syscall.Sysinfo_t
+	if err := syscall.Sysinfo(&info); err == nil {
+		bootEpoch := float64(time.Now().Unix()) - float64(info.Uptime)
+		go func(v float64) {
+			if err := tsdbClient.Push([]tsdb.Metric{{
+				Name:   "hqud_system_boot_time",
+				Labels: map[string]string{"host": cfg.Agent.NodeName, "modulo": "os_sysinfo"},
+				Value:  v, Timestamp: time.Now(),
+			}}); err != nil {
+				log.Printf("TSDB push boot time failed: %v", err)
+			}
+		}(bootEpoch)
+		log.Printf("[uptime] Boot epoch: %.0f (uptime: %ds)", bootEpoch, info.Uptime)
+	} else {
+		log.Printf("[WARN] sysinfo failed: %v", err)
+	}
+
+	// Track previous completed ops count for IOPS delta
+	var prevCompletedOps uint64 = 0
+
 	for range ticker.C {
 		var metrics []tsdb.Metric
 		var bucket uint32
@@ -195,6 +218,44 @@ func main() {
 			}(metrics)
 		} else {
 			log.Println("...No I/O events recorded...")
+		}
+
+		// --- MODULE G: Block Queue Depth + IOPS from blk_queue_stats BPF map ---
+		var queueKey0, queueKey1 uint32 = 0, 1
+		var inflight, completedOps uint64
+		queueDepthOK := objs.BlkQueueStats.Lookup(queueKey0, &inflight) == nil
+		completedOK := objs.BlkQueueStats.Lookup(queueKey1, &completedOps) == nil
+
+		if queueDepthOK {
+			go func(v float64) {
+				if err := tsdbClient.Push([]tsdb.Metric{{
+					Name:   "hqud_blk_queue_depth",
+					Labels: map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_io"},
+					Value: v, Timestamp: now,
+				}}); err != nil {
+					log.Printf("TSDB push queue depth failed: %v", err)
+				}
+			}(float64(inflight))
+			log.Printf("--- BLK Queue Depth: %d in-flight requests ---", inflight)
+		}
+
+		if completedOK {
+			var deltaOps uint64
+			if completedOps >= prevCompletedOps {
+				deltaOps = completedOps - prevCompletedOps
+			}
+			prevCompletedOps = completedOps
+			iopsPS := float64(deltaOps) / 5.0 // 5s tick
+			go func(v float64) {
+				if err := tsdbClient.Push([]tsdb.Metric{{
+					Name:   "hqud_blk_iops",
+					Labels: map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_io"},
+					Value: v, Timestamp: now,
+				}}); err != nil {
+					log.Printf("TSDB push IOPS failed: %v", err)
+				}
+			}(iopsPS)
+			log.Printf("--- BLK IOPS: %.2f/s (total completed: %d) ---", iopsPS, completedOps)
 		}
 
 		// --- MODULE A: PMU CPI + Cache Miss Rate + Context Switches ---

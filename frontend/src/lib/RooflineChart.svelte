@@ -233,7 +233,7 @@
       if (missRate > 0) {
         safeOI = Math.max(0.01, 100.0 / missRate);
       }
-      const safeMIPS = Math.max(1, ips);
+      const safeMIPS = Math.max(1, ips / 1e6);
 
       chart.setOption({
         series: [

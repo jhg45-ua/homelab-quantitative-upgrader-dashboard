@@ -2,47 +2,48 @@ package pmu
 
 import (
 	"fmt"
+	"runtime"
 	"golang.org/x/sys/unix"
 )
 
 // Collector handles reading PMU hardware and software counters via perf_event_open
 type Collector struct {
-	fdCycles      int
-	fdInstructions int
-	fdCacheRefs   int
-	fdCacheMisses int
-	fdCtxSwitches int
+	fdsCycles      []int
+	fdsInstructions []int
+	fdsCacheRefs   []int
+	fdsCacheMisses []int
+	fdsCtxSwitches []int
 }
 
 // Counters holds the absolute values read from all perf_event_open file descriptors
 type Counters struct {
-	Cycles      uint64
+	Cycles       uint64
 	Instructions uint64
-	CacheRefs   uint64
-	CacheMisses uint64
-	CtxSwitches uint64
+	CacheRefs    uint64
+	CacheMisses  uint64
+	CtxSwitches  uint64
 }
 
-func openHWCounter(config uint64) (int, error) {
+func openHWCounter(config uint64, cpu int) (int, error) {
 	attr := &unix.PerfEventAttr{
 		Type:   unix.PERF_TYPE_HARDWARE,
 		Config: config,
 		Bits:   unix.PerfBitDisabled,
 	}
-	fd, err := unix.PerfEventOpen(attr, 0, -1, -1, unix.PERF_FLAG_FD_CLOEXEC)
+	fd, err := unix.PerfEventOpen(attr, -1, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC)
 	if err != nil {
 		return 0, err
 	}
 	return fd, nil
 }
 
-func openSWCounter(config uint64) (int, error) {
+func openSWCounter(config uint64, cpu int) (int, error) {
 	attr := &unix.PerfEventAttr{
 		Type:   unix.PERF_TYPE_SOFTWARE,
 		Config: config,
 		Bits:   unix.PerfBitDisabled,
 	}
-	fd, err := unix.PerfEventOpen(attr, 0, -1, -1, unix.PERF_FLAG_FD_CLOEXEC)
+	fd, err := unix.PerfEventOpen(attr, -1, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC)
 	if err != nil {
 		return 0, err
 	}
@@ -50,50 +51,65 @@ func openSWCounter(config uint64) (int, error) {
 }
 
 // NewCollector initializes PMU hardware counters for CPU cycles, instructions, cache and context switches.
-// We attach to the current process (PID 0) on any CPU (-1) to guarantee PMU counts work inside the VM.
+// We attach system-wide (PID -1) on all logical CPUs using runtime.NumCPU() iteratively.
 func NewCollector() (*Collector, error) {
-	fdCycles, err := openHWCounter(unix.PERF_COUNT_HW_CPU_CYCLES)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open perf_event for CPU_CYCLES: %v", err)
+	numCPUs := runtime.NumCPU()
+	c := &Collector{
+		fdsCycles:       make([]int, 0, numCPUs),
+		fdsInstructions: make([]int, 0, numCPUs),
+		fdsCacheRefs:    make([]int, 0, numCPUs),
+		fdsCacheMisses:  make([]int, 0, numCPUs),
+		fdsCtxSwitches:  make([]int, 0, numCPUs),
 	}
 
-	fdInst, err := openHWCounter(unix.PERF_COUNT_HW_INSTRUCTIONS)
-	if err != nil {
-		unix.Close(fdCycles)
-		return nil, fmt.Errorf("failed to open perf_event for INSTRUCTIONS: %v", err)
+	for cpu := 0; cpu < numCPUs; cpu++ {
+		fd1, err := openHWCounter(unix.PERF_COUNT_HW_CPU_CYCLES, cpu)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("failed to open CPU_CYCLES on cpu %d: %v", cpu, err)
+		}
+		c.fdsCycles = append(c.fdsCycles, fd1)
+
+		fd2, err := openHWCounter(unix.PERF_COUNT_HW_INSTRUCTIONS, cpu)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("failed to open INSTRUCTIONS on cpu %d: %v", cpu, err)
+		}
+		c.fdsInstructions = append(c.fdsInstructions, fd2)
+
+		fd3, err := openHWCounter(unix.PERF_COUNT_HW_CACHE_REFERENCES, cpu)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("failed to open CACHE_REFERENCES on cpu %d: %v", cpu, err)
+		}
+		c.fdsCacheRefs = append(c.fdsCacheRefs, fd3)
+
+		fd4, err := openHWCounter(unix.PERF_COUNT_HW_CACHE_MISSES, cpu)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("failed to open CACHE_MISSES on cpu %d: %v", cpu, err)
+		}
+		c.fdsCacheMisses = append(c.fdsCacheMisses, fd4)
+
+		fd5, err := openSWCounter(unix.PERF_COUNT_SW_CONTEXT_SWITCHES, cpu)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("failed to open CONTEXT_SWITCHES on cpu %d: %v", cpu, err)
+		}
+		c.fdsCtxSwitches = append(c.fdsCtxSwitches, fd5)
 	}
 
-	fdCacheRefs, err := openHWCounter(unix.PERF_COUNT_HW_CACHE_REFERENCES)
-	if err != nil {
-		unix.Close(fdCycles); unix.Close(fdInst)
-		return nil, fmt.Errorf("failed to open perf_event for CACHE_REFERENCES: %v", err)
-	}
-
-	fdCacheMisses, err := openHWCounter(unix.PERF_COUNT_HW_CACHE_MISSES)
-	if err != nil {
-		unix.Close(fdCycles); unix.Close(fdInst); unix.Close(fdCacheRefs)
-		return nil, fmt.Errorf("failed to open perf_event for CACHE_MISSES: %v", err)
-	}
-
-	fdCtx, err := openSWCounter(unix.PERF_COUNT_SW_CONTEXT_SWITCHES)
-	if err != nil {
-		unix.Close(fdCycles); unix.Close(fdInst); unix.Close(fdCacheRefs); unix.Close(fdCacheMisses)
-		return nil, fmt.Errorf("failed to open perf_event for CONTEXT_SWITCHES: %v", err)
-	}
-
-	return &Collector{
-		fdCycles:      fdCycles,
-		fdInstructions: fdInst,
-		fdCacheRefs:   fdCacheRefs,
-		fdCacheMisses: fdCacheMisses,
-		fdCtxSwitches: fdCtx,
-	}, nil
+	return c, nil
 }
 
-// Start enables all PMU counters
+// Start enables all PMU counters across all CPUs
 func (c *Collector) Start() error {
-	fds := []int{c.fdCycles, c.fdInstructions, c.fdCacheRefs, c.fdCacheMisses, c.fdCtxSwitches}
-	for _, fd := range fds {
+	allFDs := append(c.fdsCycles, c.fdsInstructions...)
+	allFDs = append(allFDs, c.fdsCacheRefs...)
+	allFDs = append(allFDs, c.fdsCacheMisses...)
+	allFDs = append(allFDs, c.fdsCtxSwitches...)
+
+	for _, fd := range allFDs {
 		if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_ENABLE, 0); err != nil {
 			return fmt.Errorf("failed to enable counter fd=%d: %v", fd, err)
 		}
@@ -101,10 +117,14 @@ func (c *Collector) Start() error {
 	return nil
 }
 
-// Stop disables all PMU counters
+// Stop disables all PMU counters across all CPUs
 func (c *Collector) Stop() {
-	fds := []int{c.fdCycles, c.fdInstructions, c.fdCacheRefs, c.fdCacheMisses, c.fdCtxSwitches}
-	for _, fd := range fds {
+	allFDs := append(c.fdsCycles, c.fdsInstructions...)
+	allFDs = append(allFDs, c.fdsCacheRefs...)
+	allFDs = append(allFDs, c.fdsCacheMisses...)
+	allFDs = append(allFDs, c.fdsCtxSwitches...)
+
+	for _, fd := range allFDs {
 		unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_DISABLE, 0)
 	}
 }
@@ -112,11 +132,14 @@ func (c *Collector) Stop() {
 // Close releases all file descriptors
 func (c *Collector) Close() {
 	c.Stop()
-	unix.Close(c.fdCycles)
-	unix.Close(c.fdInstructions)
-	unix.Close(c.fdCacheRefs)
-	unix.Close(c.fdCacheMisses)
-	unix.Close(c.fdCtxSwitches)
+	allFDs := append(c.fdsCycles, c.fdsInstructions...)
+	allFDs = append(allFDs, c.fdsCacheRefs...)
+	allFDs = append(allFDs, c.fdsCacheMisses...)
+	allFDs = append(allFDs, c.fdsCtxSwitches...)
+
+	for _, fd := range allFDs {
+		unix.Close(fd)
+	}
 }
 
 func readU64(fd int) (uint64, error) {
@@ -128,34 +151,46 @@ func readU64(fd int) (uint64, error) {
 		uint64(buf[4])<<32 | uint64(buf[5])<<40 | uint64(buf[6])<<48 | uint64(buf[7])<<56, nil
 }
 
-// ReadCounters fetches the current absolute value of all PMU counters
+func sumU64(fds []int) (uint64, error) {
+	var total uint64
+	for _, fd := range fds {
+		val, err := readU64(fd)
+		if err != nil {
+			return 0, err
+		}
+		total += val
+	}
+	return total, nil
+}
+
+// ReadCounters fetches the current absolute sum of all PMU counters across the entire system
 func (c *Collector) ReadCounters() (Counters, error) {
-	cycles, err := readU64(c.fdCycles)
+	cycles, err := sumU64(c.fdsCycles)
 	if err != nil {
-		return Counters{}, fmt.Errorf("failed to read cycles: %v", err)
+		return Counters{}, fmt.Errorf("failed to sum cycles: %v", err)
 	}
-	inst, err := readU64(c.fdInstructions)
+	inst, err := sumU64(c.fdsInstructions)
 	if err != nil {
-		return Counters{}, fmt.Errorf("failed to read instructions: %v", err)
+		return Counters{}, fmt.Errorf("failed to sum instructions: %v", err)
 	}
-	cacheRefs, err := readU64(c.fdCacheRefs)
+	cacheRefs, err := sumU64(c.fdsCacheRefs)
 	if err != nil {
-		return Counters{}, fmt.Errorf("failed to read cache_refs: %v", err)
+		return Counters{}, fmt.Errorf("failed to sum cache_refs: %v", err)
 	}
-	cacheMisses, err := readU64(c.fdCacheMisses)
+	cacheMisses, err := sumU64(c.fdsCacheMisses)
 	if err != nil {
-		return Counters{}, fmt.Errorf("failed to read cache_misses: %v", err)
+		return Counters{}, fmt.Errorf("failed to sum cache_misses: %v", err)
 	}
-	ctx, err := readU64(c.fdCtxSwitches)
+	ctx, err := sumU64(c.fdsCtxSwitches)
 	if err != nil {
-		return Counters{}, fmt.Errorf("failed to read ctx_switches: %v", err)
+		return Counters{}, fmt.Errorf("failed to sum ctx_switches: %v", err)
 	}
 
 	return Counters{
-		Cycles:      cycles,
+		Cycles:       cycles,
 		Instructions: inst,
-		CacheRefs:   cacheRefs,
-		CacheMisses: cacheMisses,
-		CtxSwitches: ctx,
+		CacheRefs:    cacheRefs,
+		CacheMisses:  cacheMisses,
+		CtxSwitches:  ctx,
 	}, nil
 }

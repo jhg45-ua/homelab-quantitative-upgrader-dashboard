@@ -28,8 +28,8 @@ export function TimelineChart({ history }: Props) {
       <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
         <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">CPI Timeline</h3>
       </div>
-      <div className="p-2 h-44 md:h-56 flex-1">
-        <ReactECharts option={option} style={{ height: '100%', width: '100%' }} />
+      <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
+        <ReactECharts option={option} opts={{ renderer: 'svg' }} style={{ height: '100%', width: '100%' }} />
       </div>
     </div>
   );

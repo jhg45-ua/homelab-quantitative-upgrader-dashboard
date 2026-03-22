@@ -29,32 +29,32 @@ export function RooflineChart({ ips, cacheMiss }: Props) {
   const option = {
     backgroundColor: 'transparent',
     tooltip: { trigger: 'item', backgroundColor: '#0F172A', borderColor: '#334155', textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 } },
-    grid: { top: 30, right: 35, bottom: 40, left: 55 },
+    grid: { top: 30, right: 35, bottom: 40, left: 60 },
     xAxis: {
-      type: 'log', name: 'OPERATIONAL INTENSITY', nameLocation: 'middle', nameGap: 20, min: 0.01, max: 10000,
-      axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 9 }, splitLine: { lineStyle: { color: '#334155' } }, axisLine: { lineStyle: { color: '#475569' } },
-      nameTextStyle: { color: '#64748B', fontFamily: 'Inter', fontSize: 9, fontWeight: 600, padding: [10, 0, 0, 0] }
+      type: 'log', name: 'OPERATIONAL INTENSITY', nameLocation: 'middle', nameGap: 25, min: 0.01, max: 10000,
+      axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 10 }, splitLine: { lineStyle: { color: '#334155' } }, axisLine: { lineStyle: { color: '#475569' } },
+      nameTextStyle: { color: '#64748B', fontFamily: 'Inter', fontSize: 10, fontWeight: 600 }
     },
     yAxis: {
       type: 'log', name: 'MIPS', min: 1, max: 100000,
-      axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 9 }, splitLine: { lineStyle: { color: '#334155' } }, axisLine: { lineStyle: { color: '#475569' } },
-      nameTextStyle: { color: '#64748B', fontFamily: 'Inter', fontSize: 9, fontWeight: 600 }
+      axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 10 }, splitLine: { lineStyle: { color: '#334155' } }, axisLine: { lineStyle: { color: '#475569' } },
+      nameTextStyle: { color: '#64748B', fontFamily: 'Inter', fontSize: 10, fontWeight: 600 }
     },
     series: [
-      { name: 'Memory BW Roof', type: 'line', data: bwLineData, symbol: 'none', lineStyle: { color: '#0D9488', width: 2, type: 'dashed' } },
-      { name: 'Compute Roof', type: 'line', data: computeLineData, symbol: 'none', lineStyle: { color: '#DC2626', width: 2, type: 'dashed' } },
-      { name: 'Live Workload', type: 'scatter', data: [[safeOI, safeMIPS]], symbolSize: 14, itemStyle: { color: '#0ea5e9', shadowBlur: 15, shadowColor: '#0ea5e9' } }
+      { name: 'Memory BW Roof', type: 'line', data: bwLineData, symbol: 'none', lineStyle: { color: '#0D9488', width: 3, type: 'solid' } },
+      { name: 'Compute Roof', type: 'line', data: computeLineData, symbol: 'none', lineStyle: { color: '#DC2626', width: 3, type: 'solid' } },
+      { name: 'Live Workload', type: 'scatter', data: [[safeOI, safeMIPS]], symbolSize: 18, itemStyle: { color: '#0055ff', shadowBlur: 20, shadowColor: '#0ea5e9', borderColor: '#62fae3', borderWidth: 2 } }
     ]
   };
 
   return (
     <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
       <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
-        <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Architecture Roofline</h3>
+        <h3 className="text-[10px] md:text-xs font-semibold tracking-widest text-slate-300 uppercase">Architecture Roofline</h3>
         <span className="text-[8px] md:text-[9px] font-mono text-[#DC2626] border border-[#DC2626]/50 px-1 rounded-sm bg-red-500/10">COMPUTE BOUNDARY</span>
       </div>
-      <div className="p-2 h-44 md:h-56 flex-1">
-        <ReactECharts option={option} style={{ height: '100%', width: '100%' }} />
+      <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
+        <ReactECharts option={option} opts={{ renderer: 'svg' }} style={{ height: '100%', width: '100%' }} />
       </div>
     </div>
   );

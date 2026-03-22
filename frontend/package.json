@@ -13,7 +13,8 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "lucide-preact": "^0.577.0",
-    "preact": "^10.29.0"
+    "preact": "^10.29.0",
+    "wouter": "^3.9.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.4",

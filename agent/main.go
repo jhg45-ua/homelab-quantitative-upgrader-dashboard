@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"runtime"
 	"time"
 
 	"github.com/cilium/ebpf/link"
@@ -232,16 +231,6 @@ func main() {
 			ctxSwitchesPS := float64(deltaCtx) / 5.0
 
 			log.Printf("--- Cache Miss Rate: %.2f%% | AMAT: %.2f cycles | CtxSw/s: %.2f ---", cacheMissRate, amat, ctxSwitchesPS)
-
-			// --- v1.1.6 Injected Diagnostics ---
-			log.Printf("[DEBUG] PMU Totals - Cores Scanned: %d, Total Instructions: %d, Total Cycles: %d, Cache Misses: %d", runtime.NumCPU(), deltaInst, deltaCyc, deltaCacheMisses)
-			
-			debugOI := 1000.0
-			if cacheMissRate > 0 {
-				debugOI = 100.0 / cacheMissRate
-			}
-			debugMIPS := (float64(deltaInst) / 5.0) / 1e6
-			log.Printf("[DEBUG] Calculated Metrics - MIPS: %.2f, OI: %.2f", debugMIPS, debugOI)
 
 			pmuMetrics := []tsdb.Metric{
 				{

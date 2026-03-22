@@ -41,7 +41,7 @@
 
     // Compute ceiling: flat line from ridge OI onwards
     const computeLineData: [number, number][] = [];
-    for (let oi = ridgeOI * 0.9; oi <= 1000; oi *= 1.3) {
+    for (let oi = ridgeOI * 0.9; oi <= 10000; oi *= 1.3) {
       computeLineData.push([oi, PEAK_MIPS]);
     }
 
@@ -92,7 +92,7 @@
           nameLocation: "middle",
           nameGap: 30,
           min: 0.01,
-          max: 1000,
+          max: 10000,
           axisLabel: { color: "#64748b", fontSize: 10, fontFamily: "Inter, sans-serif" },
           splitLine: { show: true, lineStyle: { color: "#1e293b" } },
           minorSplitLine: { show: true, lineStyle: { color: "rgba(30, 41, 59, 0.4)" } },
@@ -229,18 +229,11 @@
         ips = parseFloat(ipsR.data.result[0].value[1]);
       }
 
-      let safeOI = 1000.0;
+      let safeOI = 10000.0;
       if (missRate > 0) {
         safeOI = Math.max(0.01, 100.0 / missRate);
       }
       const safeMIPS = Math.max(1, ips / 1e6);
-
-      console.table({
-        "PromQL Executed": `${VM}?query=hqud_cpu_ips{host="${node}"}`,
-        "Raw Database Value": ipsR.data.result.length > 0 ? ipsR.data.result[0].value[1] : "EMPTY",
-        "Final Coordinate X (OI)": safeOI,
-        "Final Coordinate Y (MIPS)": safeMIPS
-      });
 
       chart.setOption({
         series: [

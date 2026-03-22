@@ -235,6 +235,13 @@
       }
       const safeMIPS = Math.max(1, ips / 1e6);
 
+      console.table({
+        "PromQL Executed": `${VM}?query=hqud_cpu_ips{host="${node}"}`,
+        "Raw Database Value": ipsR.data.result.length > 0 ? ipsR.data.result[0].value[1] : "EMPTY",
+        "Final Coordinate X (OI)": safeOI,
+        "Final Coordinate Y (MIPS)": safeMIPS
+      });
+
       chart.setOption({
         series: [
           { name: "Workload", data: [[safeOI, safeMIPS]] },

@@ -7,7 +7,7 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.6.11";
+const APP_VERSION = "v2.7.0";
 
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
   const now = new Date();
@@ -139,7 +139,7 @@ export function Overview({ metrics, systemConfig }: Props) {
 
       <div className="mt-4">
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em] font-black mb-6 flex items-center gap-4">
-           <span>System Metadata</span>
+           <span>Core v2.7.0</span>
            <div className="flex-1 h-px bg-slate-800"></div>
         </div>
         <div className="bg-slate-800/20 border border-slate-800/50 p-8 flex flex-col md:flex-row gap-12 text-slate-300">

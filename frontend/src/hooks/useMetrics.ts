@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { MetricsState, HistoryFrame, LogEntry } from '../types';
-import { parsePromQLResponse } from '../utils/formatters';
+import { parsePromQLResponse, formatMetric, formatUptime } from '../utils/formatters';
 
 function deriveTMA(cpi: number, cacheMiss: number, ctxSwitches: number) {
   const cpiPenalty = Math.min(cpi / 3, 1);
@@ -95,8 +95,19 @@ export function useMetrics() {
             mutexContention: Math.min(100, (nextCtxSwitches / 10000) * 100),
           };
 
-          // Push to audit log
-          pushLog('INFO', `POLL — power:${powerW ?? '?'}W cpi:${cpi ?? '?'} tcp:${tcpRetrans ?? '?'}`);
+          // Expanded audit log — all metrics visible in /console
+          pushLog('INFO',
+            `POLL — ` +
+            `pwr:${formatMetric(powerW)}W ` +
+            `cpi:${formatMetric(nextCpi)} ` +
+            `amat:${formatMetric(amat)}cyc ` +
+            `numa:${formatMetric(numaMiss)}% ` +
+            `tcp:${formatMetric(tcpRetrans)} ` +
+            `miss:${formatMetric(cacheMiss)}% ` +
+            `qd:${formatMetric(queueDepth)} ` +
+            `iops:${formatMetric(iops)} ` +
+            `up:${formatUptime(uptimeSeconds)}`
+          );
 
           const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
           setHistory(h => [...h, {

@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import type { HistoryFrame } from '../types';
+import { formatMetric } from '../utils/formatters';
 
 interface Props {
   history: HistoryFrame[];
@@ -8,7 +9,13 @@ interface Props {
 export function AmdahlChart({ history }: Props) {
   const option = {
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'axis', backgroundColor: '#0F172A', borderColor: '#334155', textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 } },
+    tooltip: {
+      trigger: 'axis', backgroundColor: '#0F172A', borderColor: '#334155',
+      textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 },
+      formatter: (params: any[]) =>
+        `<div class="font-mono text-[10px] text-slate-500 uppercase mb-1">${params[0].axisValue}</div>` +
+        params.map(p => `<div class="flex justify-between gap-4"><span>${p.seriesName}:</span><span class="text-teal-400">${formatMetric(p.value)}%</span></div>`).join(''),
+    },
     grid: { top: 20, right: 15, bottom: 25, left: 40 },
     xAxis: { type: 'category', data: history.map(h => h.time), axisLabel: { color: '#64748B', fontFamily: 'Space Grotesk, monospace', fontSize: 9 } },
     yAxis: { type: 'value', name: '%', min: 0, max: 100, splitLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 9 }, nameTextStyle: { color: '#94A3B8', fontSize: 9 } },

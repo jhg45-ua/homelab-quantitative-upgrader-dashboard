@@ -1,5 +1,6 @@
 import ReactECharts from 'echarts-for-react';
 import type { MetricsState } from '../types';
+import { formatMetric } from '../utils/formatters';
 
 interface Props {
   metrics: MetricsState;
@@ -15,6 +16,8 @@ export function TMAChart({ metrics }: Props) {
       trigger: 'axis', axisPointer: { type: 'shadow' },
       backgroundColor: '#0F172A', borderColor: '#334155',
       textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 },
+      formatter: (params: any[]) =>
+        params.map(p => `<div class="flex justify-between gap-4"><span>${p.seriesName}:</span><span class="text-white">${formatMetric(p.value)}%</span></div>`).join(''),
     },
     grid: { top: 20, right: 15, bottom: 20, left: 15 },
     xAxis: { type: 'value', max: 100, axisLabel: { show: false }, splitLine: { show: false }, axisLine: { show: false } },

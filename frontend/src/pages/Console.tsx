@@ -7,7 +7,7 @@ interface Props {
 
 export function Console({ logs }: Props) {
   return (
-    <div className="flex flex-col h-full bg-[#0A0A0A]">
+    <div className="flex flex-col h-full bg-[#0A0A0A] p-12 md:p-16 xl:p-24">
       <header className="bg-slate-950 border-b border-slate-800 px-4 py-3 shrink-0 flex items-center justify-between">
         <h2 className="text-xs font-mono font-semibold tracking-wider text-slate-500 uppercase">
           //ttyS0 : Global Terminal Proxy

@@ -3,10 +3,10 @@ import { LayoutDashboard, Terminal, Activity, BookOpen } from 'lucide-preact';
 import { useMetrics } from './hooks/useMetrics';
 import { useSystemConfig } from './hooks/useSystemConfig';
 
-import { Overview } from './pages/Overview';
-import { DeepDive } from './pages/DeepDive';
-import { Console } from './pages/Console';
-import { Wiki } from './pages/Wiki';
+import { Overview } from './pages/Overview.tsx';
+import { DeepDive } from './pages/DeepDive.tsx';
+import { Console } from './pages/Console.tsx';
+import { Wiki } from './pages/Wiki.tsx';
 
 export function App() {
   const { metrics, history, logs } = useMetrics();

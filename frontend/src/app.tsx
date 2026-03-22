@@ -51,7 +51,7 @@ export function App() {
       <main className="flex-1 flex flex-col h-screen overflow-y-auto w-full relative">
         <Switch>
           <Route path="/"><Overview metrics={metrics} systemConfig={systemConfig} /></Route>
-          <Route path="/deep-dive"><DeepDive metrics={metrics} history={history} /></Route>
+          <Route path="/deep-dive"><DeepDive metrics={metrics} history={history} systemConfig={systemConfig} /></Route>
           <Route path="/console"><Console logs={logs} /></Route>
           <Route path="/wiki"><Wiki /></Route>
           <Route>

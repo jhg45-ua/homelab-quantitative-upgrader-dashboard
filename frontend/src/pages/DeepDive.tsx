@@ -4,14 +4,15 @@ import { TimelineChart } from '../components/TimelineChart';
 import { RooflineChart } from '../components/RooflineChart';
 import { TMAChart } from '../components/TMAChart';
 import { AmdahlChart } from '../components/AmdahlChart';
-import type { MetricsState, HistoryFrame } from '../types';
+import type { MetricsState, HistoryFrame, SystemConfig } from '../types';
 
 interface Props {
   metrics: MetricsState;
   history: HistoryFrame[];
+  systemConfig: SystemConfig | null;
 }
 
-export function DeepDive({ metrics, history }: Props) {
+export function DeepDive({ metrics, history, systemConfig }: Props) {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-3 shrink-0 flex items-center justify-between sticky top-0 z-20">
@@ -28,7 +29,7 @@ export function DeepDive({ metrics, history }: Props) {
          {/* Row 1: Roofline + Heatmap */}
          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="h-72 md:h-[420px]">
-               <RooflineChart ips={metrics.ips} cacheMiss={metrics.cacheMiss} />
+               <RooflineChart ips={metrics.ips} cacheMiss={metrics.cacheMiss} peakMips={systemConfig?.specs.peak_mips} memBwGbps={systemConfig?.specs.max_mem_bw_gbps} />
             </div>
             <div className="h-72 md:h-[420px]">
                <Heatmap />

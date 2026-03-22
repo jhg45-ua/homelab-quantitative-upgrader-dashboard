@@ -21,12 +21,13 @@ export function useMetrics() {
     const fetchData = async () => {
       try {
         const HOST = 'r720-baremetal';
-        const q = async (query: string) => {
+        const q = async (query: string, silent = false) => {
           const res = await fetch(`/api/v1/query?query=${query}{host="${HOST}"}`);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           const json: PromQLResponse = await res.json();
           if (!json.data || !json.data.result || json.data.result.length === 0) {
-            pushLog('WARN', `Data empty for ${query}`);
+            // Only log warnings for core metrics, not for optional/future ones
+            if (!silent) pushLog('WARN', `Data empty for ${query}`);
             return null;
           }
           const valStr = json.data.result[0].value[1];
@@ -35,7 +36,8 @@ export function useMetrics() {
           return val;
         };
 
-        const reqs = await Promise.all([
+        // Core metrics (warn if empty)
+        const core = await Promise.all([
           q('hqud_power_watts').catch(() => null),
           q('hqud_efficiency_ips_per_watt').catch(() => null),
           q('hqud_cpu_amat_cycles').catch(() => null),
@@ -45,35 +47,39 @@ export function useMetrics() {
           q('hqud_cpu_cpi').catch(() => null),
           q('hqud_cpu_cache_miss_rate').catch(() => null),
           q('hqud_os_context_switches_ps').catch(() => null),
-          q('hqud_system_uptime_seconds').catch(() => null),
-          q('hqud_tma_retiring_pct').catch(() => null),
-          q('hqud_tma_bad_speculation_pct').catch(() => null),
-          q('hqud_tma_frontend_bound_pct').catch(() => null),
-          q('hqud_tma_backend_bound_pct').catch(() => null),
-          q('hqud_blk_queue_depth').catch(() => null),
-          q('hqud_blk_iops').catch(() => null),
-          q('hqud_mutex_contention_pct').catch(() => null),
+        ]);
+
+        // Optional/future metrics (silent — no WARN spam)
+        const optional = await Promise.all([
+          q('hqud_system_uptime_seconds', true).catch(() => null),
+          q('hqud_tma_retiring_pct', true).catch(() => null),
+          q('hqud_tma_bad_speculation_pct', true).catch(() => null),
+          q('hqud_tma_frontend_bound_pct', true).catch(() => null),
+          q('hqud_tma_backend_bound_pct', true).catch(() => null),
+          q('hqud_blk_queue_depth', true).catch(() => null),
+          q('hqud_blk_iops', true).catch(() => null),
+          q('hqud_mutex_contention_pct', true).catch(() => null),
         ]);
 
         setMetrics(prev => {
           const next: MetricsState = {
-            powerW: reqs[0] ?? prev.powerW,
-            ipsPerW: reqs[1] ?? prev.ipsPerW,
-            amat: reqs[2] ?? prev.amat,
-            numaMiss: reqs[3] ?? prev.numaMiss,
-            tcpRetrans: reqs[4] ?? prev.tcpRetrans,
-            ips: reqs[5] ?? prev.ips,
-            cpi: reqs[6] ?? prev.cpi,
-            cacheMiss: reqs[7] ?? prev.cacheMiss,
-            ctxSwitches: reqs[8] ?? prev.ctxSwitches,
-            uptimeSeconds: reqs[9] ?? prev.uptimeSeconds,
-            tmaRetiring: reqs[10] ?? prev.tmaRetiring,
-            tmaBadSpec: reqs[11] ?? prev.tmaBadSpec,
-            tmaFrontEnd: reqs[12] ?? prev.tmaFrontEnd,
-            tmaBackEnd: reqs[13] ?? prev.tmaBackEnd,
-            queueDepth: reqs[14] ?? prev.queueDepth,
-            iops: reqs[15] ?? prev.iops,
-            mutexContention: reqs[16] ?? prev.mutexContention,
+            powerW: core[0] ?? prev.powerW,
+            ipsPerW: core[1] ?? prev.ipsPerW,
+            amat: core[2] ?? prev.amat,
+            numaMiss: core[3] ?? prev.numaMiss,
+            tcpRetrans: core[4] ?? prev.tcpRetrans,
+            ips: core[5] ?? prev.ips,
+            cpi: core[6] ?? prev.cpi,
+            cacheMiss: core[7] ?? prev.cacheMiss,
+            ctxSwitches: core[8] ?? prev.ctxSwitches,
+            uptimeSeconds: optional[0] ?? prev.uptimeSeconds,
+            tmaRetiring: optional[1] ?? prev.tmaRetiring,
+            tmaBadSpec: optional[2] ?? prev.tmaBadSpec,
+            tmaFrontEnd: optional[3] ?? prev.tmaFrontEnd,
+            tmaBackEnd: optional[4] ?? prev.tmaBackEnd,
+            queueDepth: optional[5] ?? prev.queueDepth,
+            iops: optional[6] ?? prev.iops,
+            mutexContention: optional[7] ?? prev.mutexContention,
           };
 
           const ts = new Date().toLocaleTimeString('en-US', { hour12: false });

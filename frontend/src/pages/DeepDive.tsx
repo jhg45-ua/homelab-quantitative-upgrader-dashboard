@@ -25,7 +25,7 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
         </span>
       </header>
 
-      <div className="px-6 py-8 flex-1 flex flex-col gap-6 w-full max-w-[1920px] mx-auto">
+      <div className="flex-1 w-full h-full flex flex-col gap-6 overflow-y-auto">
          
          {/* Row 1: Roofline + Heatmap */}
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

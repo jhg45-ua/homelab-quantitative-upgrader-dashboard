@@ -8,7 +8,7 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.6.8";
+const APP_VERSION = "v2.6.9";
 
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
   const now = new Date();
@@ -183,7 +183,7 @@ export function Overview({ metrics, systemConfig }: Props) {
         </button>
       </header>
 
-      <div className="px-6 py-8 flex-1 flex flex-col gap-8 w-full max-w-[1920px] mx-auto overflow-y-auto">
+      <div className="flex-1 w-full h-full flex flex-col gap-8 overflow-y-auto">
         <div>
           <h3 className="text-slate-400 font-mono uppercase tracking-widest text-xs mb-4 font-bold">Core Datasheets</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">

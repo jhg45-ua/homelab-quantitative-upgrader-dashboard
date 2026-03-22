@@ -2,6 +2,8 @@ import { Heatmap } from '../components/Heatmap';
 import { RooflineChart } from '../components/RooflineChart';
 import { TMAChart } from '../components/TMAChart';
 import { AmdahlChart } from '../components/AmdahlChart';
+import { TimelineChart } from '../components/TimelineChart';
+import { ComboChart } from '../components/ComboChart';
 import type { MetricsState, HistoryFrame, SystemConfig } from '../types';
 import { formatMetric } from '../utils/formatters';
 
@@ -72,6 +74,16 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
           <div className="flex-1">
             <AmdahlChart history={history} />
           </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="bg-slate-800/40 border border-slate-700/50 flex flex-col h-[380px] backdrop-blur-sm shadow-xl overflow-hidden">
+          <TimelineChart history={history} />
+        </div>
+
+        <div className="bg-slate-800/40 border border-slate-700/50 flex flex-col h-[380px] backdrop-blur-sm shadow-xl overflow-hidden">
+          <ComboChart history={history} />
         </div>
       </div>
 

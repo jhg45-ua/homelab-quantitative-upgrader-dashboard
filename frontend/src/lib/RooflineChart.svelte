@@ -211,11 +211,8 @@
         ),
       ]);
 
-      const effR = await fetch(
-        `${VM}?query=hqud_efficiency_ips_per_watt{host="${node}"}`,
-      ).then((r) => r.json());
-      const powerR = await fetch(
-        `${VM}?query=hqud_power_watts{host="${node}"}`,
+      const ipsR = await fetch(
+        `${VM}?query=hqud_cpu_ips{host="${node}"}`,
       ).then((r) => r.json());
 
       let cpi = 0,
@@ -227,21 +224,18 @@
         missRate = parseFloat(missR.data.result[0].value[1]);
       }
 
-      let eff = 0,
-        watts = 0;
-      if (effR.status === "success" && effR.data.result.length > 0) {
-        eff = parseFloat(effR.data.result[0].value[1]);
+      let ips = 0;
+      if (ipsR.status === "success" && ipsR.data.result.length > 0) {
+        ips = parseFloat(ipsR.data.result[0].value[1]);
       }
-      if (powerR.status === "success" && powerR.data.result.length > 0) {
-        watts = parseFloat(powerR.data.result[0].value[1]);
-      }
-      const ips = eff * watts;
 
       let safeOI = 1000.0;
       if (missRate > 0) {
         safeOI = Math.max(0.01, 100.0 / missRate);
       }
       const safeMIPS = Math.max(1, ips / 1e6);
+
+      console.log('Roofline Debug - MIPS:', safeMIPS, 'Raw Data:', ipsR);
 
       chart.setOption({
         series: [

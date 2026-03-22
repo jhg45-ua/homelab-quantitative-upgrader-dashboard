@@ -257,6 +257,12 @@ func main() {
 					Value:     ctxSwitchesPS,
 					Timestamp: now,
 				},
+				{
+					Name:      "hqud_cpu_ips",
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_pmu"},
+					Value:     float64(deltaInst) / 5.0,
+					Timestamp: now,
+				},
 			}
 			go func(m []tsdb.Metric) {
 				if err := tsdbClient.Push(m); err != nil {

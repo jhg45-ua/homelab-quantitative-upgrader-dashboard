@@ -88,22 +88,29 @@ export function Overview({ metrics, systemConfig }: Props) {
         <div>
           <h3 className="text-slate-400 font-mono uppercase tracking-widest text-xs mb-3">Core Datasheets</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-             <DatasheetCard title="ACTIVE POWER" value={formatMetric(metrics.powerW)} unit="W" footer="Total Package Draw" />
-             <DatasheetCard title="CPU EFFICIENCY" value={formatMetric(metrics.ipsPerW / 1e6)} unit="M IPS/W" footer="Instr. per Watt" valueColor="text-teal-400" />
-             <DatasheetCard title="MEMORY AMAT" value={formatMetric(metrics.amat)} unit="cyc" footer="Avg Mem Access Time" />
-             <DatasheetCard title="NUMA MISS RATE" value={formatMetric(metrics.numaMiss)} unit="%" footer="Cross-node Fetches" />
-             
-             {/* v2.6.1: Strict check for TCP Bindings */}
+             <DatasheetCard title="ACTIVE POWER" value={metrics.powerW !== null ? formatMetric(metrics.powerW) : '-'} unit="W" footer="Total Package Draw" />
+             <DatasheetCard title="CPU EFFICIENCY" value={metrics.ipsPerW !== null ? formatMetric(metrics.ipsPerW / 1e6) : '-'} unit="M IPS/W" footer="Instr. per Watt" valueColor="text-teal-400" />
+             <DatasheetCard title="MEMORY AMAT" value={metrics.amat !== null ? formatMetric(metrics.amat) : '-'} unit="cyc" footer="Avg Mem Access Time" />
+             <DatasheetCard title="NUMA MISS RATE" value={metrics.numaMiss !== null ? formatMetric(metrics.numaMiss) : '-'} unit="%" footer="Cross-node Fetches" />
+
+             {/* v2.6.2: Strict !== null guard — treats 0 as valid */}
              <div className="bg-slate-800 border border-slate-700 p-4">
                <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-1">TCP RETRANSMITS</div>
                <div className="text-4xl font-mono text-white">
-                 {metrics.tcpRetrans !== undefined && metrics.tcpRetrans !== null ? formatMetric(metrics.tcpRetrans) : '-'}
+                 {metrics.tcpRetrans !== null ? formatMetric(metrics.tcpRetrans) : '-'}
                  <span className="text-sm text-slate-400 ml-1">/s</span>
                </div>
                <div className="text-[9px] text-slate-500 mt-2">Network Reliability</div>
              </div>
 
-             <DatasheetCard title="SYSTEM UPTIME" value={formatUptime(metrics.uptimeSeconds)} unit="" footer="Dependability" valueColor="text-teal-400" />
+             {/* v2.6.2: Strict !== null guard for Uptime */}
+             <div className="bg-slate-800 border border-slate-700 p-4">
+               <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-1">SYSTEM UPTIME</div>
+               <div className="text-4xl font-mono text-teal-400">
+                 {metrics.uptimeSeconds !== null ? formatUptime(metrics.uptimeSeconds) : '-'}
+               </div>
+               <div className="text-[9px] text-slate-500 mt-2">Dependability</div>
+             </div>
           </div>
         </div>
 

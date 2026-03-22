@@ -56,7 +56,7 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
               </div>
               <div className="flex-1 flex items-center justify-center p-3 text-center">
                 <span className="text-3xl md:text-4xl font-mono text-teal-400 leading-none">
-                  {metrics.queueDepth !== undefined && metrics.queueDepth !== null ? formatMetric(metrics.queueDepth) : '-'}
+                  {metrics.queueDepth !== null ? formatMetric(metrics.queueDepth) : '-'}
                 </span>
                 <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">reqs</span>
               </div>
@@ -68,7 +68,7 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
               </div>
               <div className="flex-1 flex items-center justify-center p-3 text-center">
                 <span className="text-3xl md:text-4xl font-mono text-slate-100 leading-none">
-                  {metrics.iops !== undefined && metrics.iops !== null ? formatMetric(metrics.iops) : '-'}
+                  {metrics.iops !== null ? formatMetric(metrics.iops) : '-'}
                 </span>
                 <span className="text-[10px] font-mono text-slate-500 ml-2 uppercase self-end mb-1">iops</span>
               </div>

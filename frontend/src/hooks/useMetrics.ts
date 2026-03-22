@@ -1,17 +1,34 @@
 import { useState, useEffect } from 'preact/hooks';
-import type { MetricsState, HistoryFrame, PromQLResponse, LogEntry } from '../types';
+import type { MetricsState, HistoryFrame, LogEntry } from '../types';
+import { parsePromQLResponse } from '../utils/formatters';
 
 function deriveTMA(cpi: number, cacheMiss: number, ctxSwitches: number) {
   const cpiPenalty = Math.min(cpi / 3, 1);
   const cachePenalty = Math.min(cacheMiss / 50, 1);
   const ctxPenalty = Math.min(ctxSwitches / 50000, 1);
-
-  const backEnd = Math.round(Math.max(10, (cpiPenalty * 40 + cachePenalty * 30)));
+  const backEnd = Math.round(Math.max(10, cpiPenalty * 40 + cachePenalty * 30));
   const badSpec = Math.round(Math.max(2, ctxPenalty * 15));
   const frontEnd = Math.round(Math.max(3, 15 - cpiPenalty * 8));
   const retiring = Math.max(5, 100 - backEnd - badSpec - frontEnd);
-
   return { retiring, badSpec, frontEnd, backEnd };
+}
+
+const HOST = 'r720-baremetal';
+
+async function fetchMetric(metricName: string, rawQuery?: string): Promise<number | null> {
+  const query = rawQuery ?? `${metricName}{host="${HOST}"}`;
+  try {
+    const res = await fetch(`/api/v1/query?query=${encodeURIComponent(query)}`);
+    if (!res.ok) {
+      console.error(`[HQUD] HTTP ${res.status} for query: ${query}`);
+      return null;
+    }
+    const json = await res.json();
+    return parsePromQLResponse(metricName, json);
+  } catch (err: any) {
+    console.error(`[HQUD] Network error for ${metricName}:`, err.message);
+    return null;
+  }
 }
 
 export function useMetrics() {
@@ -26,91 +43,80 @@ export function useMetrics() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
 
   const pushLog = (level: 'INFO' | 'WARN' | 'ERROR', message: string) => {
-    const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-    setLogs(prev => [...prev.slice(-99), { timestamp, level, message }]);
+    const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+    setLogs(prev => [...prev.slice(-99), { timestamp: ts, level, message }]);
   };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAll = async () => {
       try {
-        const HOST = 'r720-baremetal';
-        const q = async (query: string, rawQuery = false) => {
-          const finalQuery = rawQuery ? query : `${query}{host="${HOST}"}`;
-          const res = await fetch(`/api/v1/query?query=${finalQuery}`);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const json: PromQLResponse = await res.json();
-          if (!json.data || !json.data.result || json.data.result.length === 0) {
-            return null;
-          }
-          const valStr = json.data.result[0].value[1];
-          const val = parseFloat(valStr);
-          pushLog('INFO', `GET ${query} -> ${valStr}`);
-          return val;
-        };
-
-        const reqs = await Promise.all([
-          q('hqud_power_watts').catch(() => null),
-          q('hqud_efficiency_ips_per_watt').catch(() => null),
-          q('hqud_cpu_amat_cycles').catch(() => null),
-          q('hqud_numa_miss_rate').catch(() => null),
-          q('hqud_net_tcp_retransmits_ps').catch(() => null),
-          q('hqud_cpu_ips').catch(() => null),
-          q('hqud_cpu_cpi').catch(() => null),
-          q('hqud_cpu_cache_miss_rate').catch(() => null),
-          q('hqud_os_context_switches_ps').catch(() => null),
-          q(`time() - node_boot_time_seconds{host="${HOST}"}`, true).catch(() => null),
-          q('hqud_blk_queue_depth').catch(() => null),
-          q('hqud_blk_iops').catch(() => null),
+        const [
+          powerW, ipsPerW, amat, numaMiss, tcpRetrans,
+          ips, cpi, cacheMiss, ctxSwitches, uptimeSeconds,
+          queueDepth, iops,
+        ] = await Promise.all([
+          fetchMetric('hqud_power_watts'),
+          fetchMetric('hqud_efficiency_ips_per_watt'),
+          fetchMetric('hqud_cpu_amat_cycles'),
+          fetchMetric('hqud_numa_miss_rate'),
+          fetchMetric('hqud_net_tcp_retransmits_ps'),
+          fetchMetric('hqud_cpu_ips'),
+          fetchMetric('hqud_cpu_cpi'),
+          fetchMetric('hqud_cpu_cache_miss_rate'),
+          fetchMetric('hqud_os_context_switches_ps'),
+          fetchMetric('uptime', `time() - node_boot_time_seconds{host="${HOST}"}`),
+          fetchMetric('hqud_blk_queue_depth'),
+          fetchMetric('hqud_blk_iops'),
         ]);
 
         setMetrics(prev => {
-          const cpi = reqs[6] ?? prev.cpi;
-          const cacheMiss = reqs[7] ?? prev.cacheMiss;
-          const ctxSwitches = reqs[8] ?? prev.ctxSwitches;
-          const tma = deriveTMA(cpi, cacheMiss, ctxSwitches);
-          const mutexContention = Math.min(100, (ctxSwitches / 10000) * 100);
+          const nextCpi = cpi ?? prev.cpi;
+          const nextCacheMiss = cacheMiss ?? prev.cacheMiss;
+          const nextCtxSwitches = ctxSwitches ?? prev.ctxSwitches;
+          const tma = deriveTMA(nextCpi, nextCacheMiss, nextCtxSwitches);
 
-          return {
-            powerW: reqs[0] ?? prev.powerW,
-            ipsPerW: reqs[1] ?? prev.ipsPerW,
-            amat: reqs[2] ?? prev.amat,
-            numaMiss: reqs[3] ?? prev.numaMiss,
-            tcpRetrans: reqs[4] ?? prev.tcpRetrans,
-            ips: reqs[5] ?? prev.ips,
-            cpi,
-            cacheMiss,
-            ctxSwitches,
-            uptimeSeconds: reqs[9] ?? prev.uptimeSeconds,
-            tmaRetiring: tma.retiring,
-            tmaBadSpec: tma.badSpec,
-            tmaFrontEnd: tma.frontEnd,
-            tmaBackEnd: tma.backEnd,
-            queueDepth: reqs[10] ?? 12, // Mock if missing
-            iops: reqs[11] ?? 4500,    // Mock if missing
-            mutexContention,
+          const next: MetricsState = {
+            powerW:        powerW     ?? prev.powerW,
+            ipsPerW:       ipsPerW    ?? prev.ipsPerW,
+            amat:          amat       ?? prev.amat,
+            numaMiss:      numaMiss   ?? prev.numaMiss,
+            tcpRetrans:    tcpRetrans !== null ? tcpRetrans : prev.tcpRetrans,
+            ips:           ips        ?? prev.ips,
+            cpi:           nextCpi,
+            cacheMiss:     nextCacheMiss,
+            ctxSwitches:   nextCtxSwitches,
+            uptimeSeconds: uptimeSeconds ?? prev.uptimeSeconds,
+            tmaRetiring:   tma.retiring,
+            tmaBadSpec:    tma.badSpec,
+            tmaFrontEnd:   tma.frontEnd,
+            tmaBackEnd:    tma.backEnd,
+            queueDepth:    queueDepth !== null ? queueDepth : 12,   // Mock fallback
+            iops:          iops       !== null ? iops       : 4500, // Mock fallback
+            mutexContention: Math.min(100, (nextCtxSwitches / 10000) * 100),
           };
-        });
 
-        // Update history separately to avoid nested state issues if any
-        setHistory(hPrev => {
+          // Push to audit log
+          pushLog('INFO', `POLL — power:${powerW ?? '?'}W cpi:${cpi ?? '?'} tcp:${tcpRetrans ?? '?'}`);
+
           const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
-          // Note: accessing reqs directly for history to keep it simple
-          return [...hPrev, {
-            time: ts, 
-            cpi: reqs[6] || 0, 
-            cacheMiss: reqs[7] || 0,
-            ctxSwitches: reqs[8] || 0, 
-            mutexContention: Math.min(100, ((reqs[8] || 0) / 10000) * 100)
-          }].slice(-20);
+          setHistory(h => [...h, {
+            time: ts,
+            cpi: next.cpi,
+            cacheMiss: next.cacheMiss,
+            ctxSwitches: next.ctxSwitches,
+            mutexContention: next.mutexContention,
+          }].slice(-20));
+
+          return next;
         });
 
       } catch (err: any) {
-        pushLog('ERROR', `TSDB Fetch Timeout: ${err.message}`);
+        pushLog('ERROR', `Fatal poll error: ${err.message}`);
       }
     };
 
-    fetchData();
-    const iv = setInterval(fetchData, 5000);
+    fetchAll();
+    const iv = setInterval(fetchAll, 5000);
     return () => clearInterval(iv);
   }, []);
 

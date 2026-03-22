@@ -8,6 +8,8 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
+const APP_VERSION = "v2.6.8";
+
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
@@ -145,7 +147,7 @@ function generateAuditReport(metrics: MetricsState, config: SystemConfig | null)
 
   ${upgradeSection}
   <div class="footer">
-    <span>HQUD Foundry v2.6.6 — Auto-generated</span>
+    <span>HQUD Foundry ${APP_VERSION} — Auto-generated</span>
     <span>${isoTs}</span>
   </div>
 </body>
@@ -164,7 +166,7 @@ export function Overview({ metrics, systemConfig }: Props) {
     <div className="flex flex-col h-full">
       <header className="bg-slate-900 border-b border-slate-800 px-4 md:px-8 py-4 flex justify-between items-center shrink-0">
         <div>
-           <h2 className="text-sm md:text-lg font-semibold tracking-wider text-slate-300 uppercase line-clamp-1">
+           <h2 className="text-sm md:text-xl font-bold tracking-wider text-slate-100 uppercase line-clamp-1">
              Executive Overview
            </h2>
            <div className="text-[10px] font-mono text-slate-500 mt-1 uppercase tracking-widest hidden md:block">
@@ -174,56 +176,56 @@ export function Overview({ metrics, systemConfig }: Props) {
         
         <button 
           onClick={() => generateAuditReport(metrics, systemConfig)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-transparent border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-500 transition-colors rounded-sm text-xs font-semibold tracking-wide">
+          className="flex items-center gap-2 px-4 py-2 bg-transparent border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 hover:border-slate-500 transition-colors rounded-sm text-xs font-bold tracking-wide">
           <Download size={14} />
           <span className="hidden md:inline">Export Audit Report (PDF)</span>
           <span className="inline md:hidden">PDF</span>
         </button>
       </header>
 
-      <div className="p-4 md:p-8 flex-1 flex flex-col gap-6 w-full max-w-[1600px] mx-auto overflow-y-auto">
+      <div className="px-6 py-8 flex-1 flex flex-col gap-8 w-full max-w-[1920px] mx-auto overflow-y-auto">
         <div>
-          <h3 className="text-slate-400 font-mono uppercase tracking-widest text-xs mb-3">Core Datasheets</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          <h3 className="text-slate-400 font-mono uppercase tracking-widest text-xs mb-4 font-bold">Core Datasheets</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
              <DatasheetCard title="ACTIVE POWER" value={metrics.powerW !== null ? formatMetric(metrics.powerW) : '-'} unit="W" footer="Total Package Draw" />
              <DatasheetCard title="CPU EFFICIENCY" value={metrics.ipsPerW !== null ? formatMetric(metrics.ipsPerW / 1e6) : '-'} unit="M IPS/W" footer="Instr. per Watt" valueColor="text-teal-400" />
              <DatasheetCard title="MEMORY AMAT" value={metrics.amat !== null ? formatMetric(metrics.amat) : '-'} unit="cyc" footer="Avg Mem Access Time" />
              <DatasheetCard title="NUMA MISS RATE" value={metrics.numaMiss !== null ? formatMetric(metrics.numaMiss) : '-'} unit="%" footer="Cross-node Fetches" />
 
              {/* v2.6.2: Strict !== null guard — treats 0 as valid */}
-             <div className="bg-slate-800 border border-slate-700 p-4">
-               <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-1">TCP RETRANSMITS</div>
-               <div className="text-4xl font-mono text-white">
+             <div className="bg-slate-800 border border-slate-700 p-6">
+               <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-2 font-bold">TCP RETRANSMITS</div>
+               <div className="text-4xl md:text-5xl font-mono text-white font-bold">
                  {metrics.tcpRetrans !== null ? formatMetric(metrics.tcpRetrans) : '-'}
-                 <span className="text-sm text-slate-400 ml-1">/s</span>
+                 <span className="text-sm text-slate-400 ml-2">/s</span>
                </div>
-               <div className="text-[9px] text-slate-500 mt-2">Network Reliability</div>
+               <div className="text-[10px] text-slate-500 mt-3 uppercase tracking-wider">Network Reliability</div>
              </div>
 
              {/* v2.6.2: Strict !== null guard for Uptime */}
-             <div className="bg-slate-800 border border-slate-700 p-4">
-               <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-1">SYSTEM UPTIME</div>
-               <div className="text-4xl font-mono text-teal-400">
+             <div className="bg-slate-800 border border-slate-700 p-6">
+               <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-2 font-bold">SYSTEM UPTIME</div>
+               <div className="text-4xl md:text-5xl font-mono text-teal-400 font-bold">
                  {metrics.uptimeSeconds !== null ? formatUptime(metrics.uptimeSeconds) : '-'}
                </div>
-               <div className="text-[9px] text-slate-500 mt-2">Dependability</div>
+               <div className="text-[10px] text-slate-500 mt-3 uppercase tracking-wider">Dependability</div>
              </div>
           </div>
         </div>
 
         <div>
-          <h3 className="text-slate-400 font-mono uppercase tracking-widest text-xs mb-3">System Configuration Metadata</h3>
-          <div className="bg-slate-800 border border-slate-700 p-4 md:p-6 text-slate-300">
+           <h3 className="text-slate-400 font-mono uppercase tracking-widest text-xs mb-4 font-bold">System Configuration Metadata</h3>
+           <div className="bg-slate-800 border border-slate-700 p-6 md:p-10 text-slate-300">
             {systemConfig ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                <ConfigRow icon={<Server size={14} className="text-slate-500" />} label="NODE NAME" value={systemConfig.node_name || '—'} />
-                <ConfigRow icon={<Cpu size={14} className="text-slate-500" />} label="HARDWARE" value={systemConfig.hardware_desc || '—'} />
-                <ConfigRow icon={<Cpu size={14} className="text-slate-500" />} label="CORES" value={`${systemConfig.specs.cores} Cores`} />
-                <ConfigRow icon={<HardDrive size={14} className="text-slate-500" />} label="PEAK THROUGHPUT" value={`${systemConfig.specs.peak_mips.toLocaleString()} MIPS`} />
-                <ConfigRow icon={<HardDrive size={14} className="text-slate-500" />} label="MEMORY BANDWIDTH" value={`${systemConfig.specs.max_mem_bw_gbps} GB/s`} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+                <ConfigRow icon={<Server size={18} className="text-slate-500" />} label="NODE NAME" value={systemConfig.node_name || '—'} />
+                <ConfigRow icon={<Cpu size={18} className="text-slate-500" />} label="HARDWARE" value={systemConfig.hardware_desc || '—'} />
+                <ConfigRow icon={<Cpu size={18} className="text-slate-500" />} label="CORES" value={`${systemConfig.specs.cores} Cores`} />
+                <ConfigRow icon={<HardDrive size={18} className="text-slate-500" />} label="PEAK THROUGHPUT" value={`${systemConfig.specs.peak_mips.toLocaleString()} MIPS`} />
+                <ConfigRow icon={<HardDrive size={18} className="text-slate-500" />} label="MEMORY BANDWIDTH" value={`${systemConfig.specs.max_mem_bw_gbps} GB/s`} />
               </div>
             ) : (
-              <div className="text-slate-500 font-mono text-xs animate-pulse">Fetching hardware configuration from /api/hardware...</div>
+              <div className="text-slate-500 font-mono text-sm animate-pulse">Fetching hardware configuration from /api/hardware...</div>
             )}
           </div>
         </div>
@@ -234,11 +236,11 @@ export function Overview({ metrics, systemConfig }: Props) {
 
 function ConfigRow({ icon, label, value }: { icon: any; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 border-b border-slate-700/50 pb-3">
+    <div className="flex items-center gap-4 border-b border-slate-700/50 pb-4">
       {icon}
       <div className="flex-1">
-        <div className="text-[9px] md:text-[10px] text-slate-500 uppercase tracking-widest font-semibold">{label}</div>
-        <div className="text-sm md:text-base text-slate-200 font-mono">{value}</div>
+        <div className="text-[10px] md:text-sm text-slate-500 uppercase tracking-widest font-bold mb-1">{label}</div>
+        <div className="text-base md:text-xl text-slate-100 font-mono font-semibold">{value}</div>
       </div>
     </div>
   );

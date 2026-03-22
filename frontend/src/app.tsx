@@ -48,7 +48,7 @@ export function App() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col h-screen overflow-y-auto w-full relative">
+      <main className="flex-1 flex flex-col h-screen overflow-y-auto w-full relative bg-slate-900">
         <Switch>
           <Route path="/"><Overview metrics={metrics} systemConfig={systemConfig} /></Route>
           <Route path="/deep-dive"><DeepDive metrics={metrics} history={history} systemConfig={systemConfig} /></Route>

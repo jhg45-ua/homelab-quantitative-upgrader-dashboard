@@ -10,69 +10,96 @@ interface Props {
 const APP_VERSION = "v2.7.0";
 
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
-  const now = new Date();
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
+  const isoTs = new Date().toISOString();
+  let upgradeSection = '';
+  // v2.6.2: Dynamic recommendations based on telemetry
+  if (metrics.amat > 22 || metrics.numaMiss > 10) {
+     upgradeSection = `
+       <div class="summary" style="border-left-color: #f97316; background: #fff7ed; padding: 25px; margin: 30px 0; border-left: 8px solid #f97316">
+          <div style="font-size:14px; font-weight:900; color: #c2410c; text-transform:uppercase; margin-bottom:10px;">Critical Path: Memory Optimization Required</div>
+          <p style="font-size:12px; color: #7c2d12; margin:0; line-height:1.6;">
+            The current <strong>Average Memory Access Time (AMAT: ${formatMetric(metrics.amat)} cyc)</strong> indicates significant stall cycles. 
+            <strong>Recommendation:</strong> Consolidate processes to a single NUMA node or verify RAM timings in BIOS.
+          </p>
+       </div>
+     `;
+  }
 
   const html = `
     <html>
       <head>
-        <title>HQUD Audit Report - ${config?.node_name || 'r720-baremetal'}</title>
+        <title>HQUD Foundry Audit - ${config?.node_name || 'Node-0'}</title>
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap');
-          body { font-family: 'Inter', sans-serif; background: #fff; color: #000; margin: 0; padding: 40px; }
-          .header { border-bottom: 4px solid #111827; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
-          .title { font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; }
-          .metadata { font-family: 'Roboto Mono', monospace; font-size: 11px; color: #666; text-transform: uppercase; }
-          .section-title { font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 2px solid #111827; padding-bottom: 5px; margin-bottom: 15px; margin-top: 30px; letter-spacing: 0.1em; color: #374151; }
-          .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-          .metric-card { border: 1px solid #E5E7EB; padding: 15px; }
-          .metric-label { font-size: 9px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; margin-bottom: 5px; }
-          .metric-value { font-size: 20px; font-weight: 900; font-family: 'Roboto Mono', monospace; color: #111827; }
-          .summary { background: #F9FAFB; padding: 20px; border-left: 6px solid #111827; margin: 30px 0; }
-          .footer { font-size: 9px; color: #9CA3AF; text-align: center; margin-top: 50px; font-family: 'Roboto Mono', monospace; border-top: 1px solid #E5E7EB; padding-top: 10px; }
+          @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;900&display=swap');
+          body { font-family: 'Inter', sans-serif; background: #0A0F1D; color: #cbd5e1; margin: 0; padding: 50px; }
+          .report-container { max-width: 900px; margin: 0 auto; }
+          .header { border-bottom: 2px solid #1e293b; padding-bottom: 20px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .title { font-size: 32px; font-weight: 900; color: #f8fafc; text-transform: uppercase; letter-spacing: -1.5px; }
+          .metadata { font-family: 'Roboto Mono', monospace; font-size: 11px; color: #64748b; text-transform: uppercase; margin-top: 5px; }
+          .section-title { font-size: 11px; font-weight: 900; color: #14b8a6; text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 20px; border-left: 4px solid #14b8a6; padding-left: 15px; }
+          .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 50px; }
+          .metric-box { background: #0F172A; border: 1px solid #1e293b; padding: 25px; position: relative; }
+          .m-label { font-size: 9px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+          .m-value { font-size: 24px; font-weight: 900; color: #f8fafc; font-family: 'Roboto Mono', monospace; }
+          .m-unit { font-size: 10px; color: #475569; margin-left: 5px; }
+          .tma-bar { height: 12px; background: #1e293b; border-radius: 6px; overflow: hidden; display: flex; margin: 20px 0; }
+          .tma-seg { height: 100%; transition: width 0.3s ease; }
+          .footer { margin-top: 60px; border-top: 1px solid #1e293b; padding-top: 20px; display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 9px; color: #475569; text-transform: uppercase; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div>
-            <div class="title">Hardware Audit Report</div>
-            <div class="metadata">Node: ${config?.node_name || 'r720-baremetal'} // HW: ${config?.hardware_desc || 'Dell R720'}</div>
+        <div class="report-container">
+          <div class="header">
+            <div>
+              <div class="title">System Qualitative Audit</div>
+              <div class="metadata">Node Identifier: ${config?.node_name || 'UNSPECIFIED'} // HQ-Core ${APP_VERSION}</div>
+            </div>
+            <div style="text-align: right">
+              <div class="metadata" style="color:#14b8a6; font-weight:bold;">REPORT: ${isoTs}</div>
+              <div class="metadata">Hardware: ${config?.hardware_desc || 'Generic Hardware'}</div>
+            </div>
           </div>
-          <div style="text-align: right">
-            <div class="metadata">Generated: ${now.toLocaleString()}</div>
-            <div class="metadata">v${APP_VERSION} // ${now.toISOString()}</div>
+
+          <div class="section-title">Telemetry Datasheet</div>
+          <div class="metric-grid">
+            <div class="metric-box"><div class="m-label">Active Power</div><div class="m-value">${formatMetric(metrics.powerW)}<span class="m-unit">W</span></div></div>
+            <div class="metric-box"><div class="m-label">Efficiency</div><div class="m-value">${formatMetric(metrics.ipsPerW / 1e6)}<span class="m-unit">M IPS/W</span></div></div>
+            <div class="metric-box"><div class="m-label">Memory AMAT</div><div class="m-value">${formatMetric(metrics.amat)}<span class="m-unit">cyc</span></div></div>
+            <div class="metric-box"><div class="m-label">NUMA Miss Rate</div><div class="m-value">${formatMetric(metrics.numaMiss)}<span class="m-unit">%</span></div></div>
+            <div class="metric-box"><div class="m-label">TCP Retransmits</div><div class="m-value">${formatMetric(metrics.tcpRetrans)}<span class="m-unit">/s</span></div></div>
+            <div class="metric-box"><div class="m-label">Uptime</div><div class="m-value" style="font-size:18px">${formatUptime(metrics.uptimeSeconds)}</div></div>
           </div>
-        </div>
 
-        <div class="section-title">Telemetry Snapshot</div>
-        <div class="grid">
-          <div class="metric-card"><div class="metric-label">Power</div><div class="metric-value">${formatMetric(metrics.powerW)} W</div></div>
-          <div class="metric-card"><div class="metric-label">Efficiency</div><div class="metric-value">${formatMetric(metrics.ipsPerW / 1e6)} M IPS/W</div></div>
-          <div class="metric-card"><div class="metric-label">Mem Latency</div><div class="metric-value">${formatMetric(metrics.amat)} cyc</div></div>
-          <div class="metric-card"><div class="metric-label">NUMA Miss</div><div class="metric-value">${formatMetric(metrics.numaMiss)} %</div></div>
-          <div class="metric-card"><div class="metric-label">TCP Retrans</div><div class="metric-value">${formatMetric(metrics.tcpRetrans)} /s</div></div>
-          <div class="metric-card"><div class="metric-label">Uptime</div><div class="metric-value">${formatUptime(metrics.uptimeSeconds)}</div></div>
-        </div>
+          <div class="section-title">Pipeline Slot Allocation (TMA)</div>
+          <div class="tma-bar">
+            <div class="tma-seg" style="width:${metrics.tmaRetiring}%; background:#22c55e;"></div>
+            <div class="tma-seg" style="width:${metrics.tmaBadSpec}%; background:#f97316;"></div>
+            <div class="tma-seg" style="width:${metrics.tmaFrontEnd}%; background:#3b82f6;"></div>
+            <div class="tma-seg" style="width:${metrics.tmaBackEnd}%; background:#ef4444;"></div>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:9px; font-family:'Roboto Mono', monospace; color:#64748b; text-transform:uppercase;">
+            <span>Retiring: ${metrics.tmaRetiring}%</span>
+            <span>Bad Spec: ${metrics.tmaBadSpec}%</span>
+            <span>Front-End: ${metrics.tmaFrontEnd}%</span>
+            <span>Back-End: ${metrics.tmaBackEnd}%</span>
+          </div>
 
-        <div class="summary">
-          <div class="section-title" style="border:none; margin-top:0">Foundry Assessment</div>
-          <p style="font-size: 13px; line-height: 1.5; color: #374151">
-            System performance is marked as <strong>${metrics.amat < 20 ? 'NOMINAL' : 'DEGRADED'}</strong>. 
-            AMAT of ${formatMetric(metrics.amat)} cycles suggests the memory subsystem is ${metrics.amat < 15 ? 'efficient' : 'experiencing minor stalls'}.
-          </p>
-        </div>
+          ${upgradeSection}
 
-        <div class="footer">
-          DOCUMENT CLASSIFIED // HQUD QUANTITATIVE AUDIT ENGINE // v${APP_VERSION}
+          <div class="footer">
+            <span>HQUD Quantitative Engine // Foundry Engine v2.7.0</span>
+            <span>Classified: Confidential</span>
+          </div>
         </div>
       </body>
     </html>
   `;
   
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
   printWindow.document.write(html);
   printWindow.document.close();
-  printWindow.print();
+  setTimeout(() => printWindow.print(), 800);
 }
 
 export function Overview({ metrics, systemConfig }: Props) {

@@ -1,27 +1,22 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vite'
+import preact from '@preact/preset-vite'
+import tailwindcss from '@tailwindcss/vite'
 
+// https://vite.dev/config/
 export default defineConfig({
-	plugins: [sveltekit()],
-	server: {
-		proxy: {
-			'/api/v1': {
-				target: 'http://localhost:8428',
-				changeOrigin: true
-			},
-			'/api/generate-audit': {
-				target: 'http://localhost:8080',
-				changeOrigin: true
-			},
-			'/api/hardware': {
-				target: 'http://localhost:8080',
-				changeOrigin: true
-			},
-			'/api/health': {
-				target: 'http://localhost:8080',
-				changeOrigin: true
-			}
-		}
-	}
-});
-
+  plugins: [
+    preact(),
+    tailwindcss()
+  ],
+  resolve: {
+    alias: {
+      'react': 'preact/compat',
+      'react-dom/test-utils': 'preact/test-utils',
+      'react-dom': 'preact/compat',
+      'react/jsx-runtime': 'preact/jsx-runtime'
+    }
+  },
+  build: {
+    outDir: 'build'
+  }
+})

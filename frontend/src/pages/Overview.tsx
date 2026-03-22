@@ -10,96 +10,149 @@ interface Props {
 const APP_VERSION = "v2.7.0";
 
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
-  const isoTs = new Date().toISOString();
-  let upgradeSection = '';
-  // v2.6.2: Dynamic recommendations based on telemetry
-  if (metrics.amat > 22 || metrics.numaMiss > 10) {
-     upgradeSection = `
-       <div class="summary" style="border-left-color: #f97316; background: #fff7ed; padding: 25px; margin: 30px 0; border-left: 8px solid #f97316">
-          <div style="font-size:14px; font-weight:900; color: #c2410c; text-transform:uppercase; margin-bottom:10px;">Critical Path: Memory Optimization Required</div>
-          <p style="font-size:12px; color: #7c2d12; margin:0; line-height:1.6;">
-            The current <strong>Average Memory Access Time (AMAT: ${formatMetric(metrics.amat)} cyc)</strong> indicates significant stall cycles. 
-            <strong>Recommendation:</strong> Consolidate processes to a single NUMA node or verify RAM timings in BIOS.
-          </p>
-       </div>
-     `;
-  }
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const isoTs = now.toISOString();
+  const nodeName = config?.node_name ?? 'r720-baremetal';
+  const hwDesc = config?.hardware_desc ?? 'Dell PowerEdge R720 (2x Intel Xeon E5-2670)';
+  const cores = config?.specs.cores ?? 16;
+  const peakMips = config?.specs.peak_mips ?? 166400;
+  const memBw = config?.specs.max_mem_bw_gbps ?? 102.4;
 
-  const html = `
-    <html>
-      <head>
-        <title>HQUD Foundry Audit - ${config?.node_name || 'Node-0'}</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;900&display=swap');
-          body { font-family: 'Inter', sans-serif; background: #0A0F1D; color: #cbd5e1; margin: 0; padding: 50px; }
-          .report-container { max-width: 900px; margin: 0 auto; }
-          .header { border-bottom: 2px solid #1e293b; padding-bottom: 20px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
-          .title { font-size: 32px; font-weight: 900; color: #f8fafc; text-transform: uppercase; letter-spacing: -1.5px; }
-          .metadata { font-family: 'Roboto Mono', monospace; font-size: 11px; color: #64748b; text-transform: uppercase; margin-top: 5px; }
-          .section-title { font-size: 11px; font-weight: 900; color: #14b8a6; text-transform: uppercase; letter-spacing: 0.3em; margin-bottom: 20px; border-left: 4px solid #14b8a6; padding-left: 15px; }
-          .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 50px; }
-          .metric-box { background: #0F172A; border: 1px solid #1e293b; padding: 25px; position: relative; }
-          .m-label { font-size: 9px; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
-          .m-value { font-size: 24px; font-weight: 900; color: #f8fafc; font-family: 'Roboto Mono', monospace; }
-          .m-unit { font-size: 10px; color: #475569; margin-left: 5px; }
-          .tma-bar { height: 12px; background: #1e293b; border-radius: 6px; overflow: hidden; display: flex; margin: 20px 0; }
-          .tma-seg { height: 100%; transition: width 0.3s ease; }
-          .footer { margin-top: 60px; border-top: 1px solid #1e293b; padding-top: 20px; display: flex; justify-content: space-between; font-family: 'Roboto Mono', monospace; font-size: 9px; color: #475569; text-transform: uppercase; }
-        </style>
-      </head>
-      <body>
-        <div class="report-container">
-          <div class="header">
-            <div>
-              <div class="title">System Qualitative Audit</div>
-              <div class="metadata">Node Identifier: ${config?.node_name || 'UNSPECIFIED'} // HQ-Core ${APP_VERSION}</div>
-            </div>
-            <div style="text-align: right">
-              <div class="metadata" style="color:#14b8a6; font-weight:bold;">REPORT: ${isoTs}</div>
-              <div class="metadata">Hardware: ${config?.hardware_desc || 'Generic Hardware'}</div>
-            </div>
-          </div>
+  // --- Hardware Upgrade Recommendation Engine (v2.6.6 Logic) ---
+  const cpi = metrics.cpi;
+  const amat = metrics.amat;
+  const queueDepth = metrics.queueDepth ?? 0;
+  const iops = metrics.iops ?? 0;
+  // Little's Law calculation for inferred latency
+  const inferredLatencyMs = iops > 0 ? (queueDepth / iops) * 1000 : 0;
 
-          <div class="section-title">Telemetry Datasheet</div>
-          <div class="metric-grid">
-            <div class="metric-box"><div class="m-label">Active Power</div><div class="m-value">${formatMetric(metrics.powerW)}<span class="m-unit">W</span></div></div>
-            <div class="metric-box"><div class="m-label">Efficiency</div><div class="m-value">${formatMetric(metrics.ipsPerW / 1e6)}<span class="m-unit">M IPS/W</span></div></div>
-            <div class="metric-box"><div class="m-label">Memory AMAT</div><div class="m-value">${formatMetric(metrics.amat)}<span class="m-unit">cyc</span></div></div>
-            <div class="metric-box"><div class="m-label">NUMA Miss Rate</div><div class="m-value">${formatMetric(metrics.numaMiss)}<span class="m-unit">%</span></div></div>
-            <div class="metric-box"><div class="m-label">TCP Retransmits</div><div class="m-value">${formatMetric(metrics.tcpRetrans)}<span class="m-unit">/s</span></div></div>
-            <div class="metric-box"><div class="m-label">Uptime</div><div class="m-value" style="font-size:18px">${formatUptime(metrics.uptimeSeconds)}</div></div>
-          </div>
+  const cpuRec = cpi > 1.2
+    ? `<tr><td>CPU Subsystem</td><td>High CPI (${formatMetric(cpi)}). Pipeline stalls detected. Consider upgrading to a modern µArch or vectorizing hot workloads.</td><td class="badge-warn">UPGRADE RECOMMENDED</td></tr>`
+    : `<tr><td>CPU Subsystem</td><td>Efficient CPI (${formatMetric(cpi)}). No immediate upgrade needed.</td><td class="badge-ok">OPTIMAL</td></tr>`;
 
-          <div class="section-title">Pipeline Slot Allocation (TMA)</div>
-          <div class="tma-bar">
-            <div class="tma-seg" style="width:${metrics.tmaRetiring}%; background:#22c55e;"></div>
-            <div class="tma-seg" style="width:${metrics.tmaBadSpec}%; background:#f97316;"></div>
-            <div class="tma-seg" style="width:${metrics.tmaFrontEnd}%; background:#3b82f6;"></div>
-            <div class="tma-seg" style="width:${metrics.tmaBackEnd}%; background:#ef4444;"></div>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:9px; font-family:'Roboto Mono', monospace; color:#64748b; text-transform:uppercase;">
-            <span>Retiring: ${metrics.tmaRetiring}%</span>
-            <span>Bad Spec: ${metrics.tmaBadSpec}%</span>
-            <span>Front-End: ${metrics.tmaFrontEnd}%</span>
-            <span>Back-End: ${metrics.tmaBackEnd}%</span>
-          </div>
+  const memRec = amat > 15
+    ? `<tr style="background: #fffbeb"><td>Memory / NUMA</td><td>High AMAT (${formatMetric(amat)} cyc). Consider higher-speed ECC RAM or strict NUMA CPU pinning via cpuset.</td><td class="badge-warn" style="color:#D97706">TUNING REQUIRED</td></tr>`
+    : `<tr><td>Memory / NUMA</td><td>AMAT is healthy (${formatMetric(amat)} cyc). Memory hierarchy within spec.</td><td class="badge-ok">OPTIMAL</td></tr>`;
 
-          ${upgradeSection}
+  const ioRec = queueDepth > 5 && inferredLatencyMs > 20
+    ? `<tr><td>Storage I/O</td><td>Disk bottleneck detected. Little's Law W ≈ ${inferredLatencyMs.toFixed(1)} ms. NVMe upgrade strongly recommended.</td><td class="badge-crit">UPGRADE RECOMMENDED</td></tr>`
+    : `<tr><td>Storage I/O</td><td>I/O latency within acceptable bounds (W ≈ ${inferredLatencyMs.toFixed(1)} ms). No storage upgrade needed.</td><td class="badge-ok">OPTIMAL</td></tr>`;
 
-          <div class="footer">
-            <span>HQUD Quantitative Engine // Foundry Engine v2.7.0</span>
-            <span>Classified: Confidential</span>
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HQUD Audit Report — ${dateStr}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; color: #1e293b; padding: 60px; max-width: 1000px; margin: 0 auto; background: #fff; line-height: 1.4; }
+    
+    .header { border-bottom: 5px solid #0f172a; padding-bottom: 25px; margin-bottom: 40px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .title { font-weight: 900; font-size: 32px; letter-spacing: -1.5px; text-transform: uppercase; color: #0f172a; }
+    .subtitle { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #64748b; margin-top: 5px; letter-spacing: 0.1em; text-transform: uppercase; }
+    
+    .section-title { font-size: 11px; font-weight: 900; letter-spacing: 0.15em; text-transform: uppercase; color: #64748b; margin: 35px 0 15px 0; }
+    
+    .context-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; margin-bottom: 30px; }
+    .context-item { background: #f8fafc; padding: 15px 20px; }
+    .context-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin-bottom: 4px; font-weight: 800; }
+    .context-value { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #334155; }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+    th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; padding: 12px 10px; border-bottom: 2px solid #0f172a; font-weight: 900; }
+    td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .val { font-weight: 700; color: #0f172a; }
+    .unit { color: #64748b; font-size: 10px; }
+    
+    .tma-container { margin: 25px 0; }
+    .tma-bar { display: flex; height: 40px; border-radius: 4px; overflow: hidden; margin-bottom: 12px; border: 1px solid #e2e8f0; }
+    .tma-seg { display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; font-weight: 900; font-family: 'JetBrains Mono', monospace; }
+    .tma-legend { display: flex; justify-content: space-between; gap: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+    .dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    .badge-ok { font-weight: 900; color: #059669; }
+    .badge-warn { font-weight: 900; color: #D97706; }
+    .badge-crit { font-weight: 900; color: #DC2626; }
+    
+    .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="title">Hardware Quantitative Upgrader Dashboard</div>
+      <div class="subtitle">Microarchitecture Audit Report // ${isoTs}</div>
+    </div>
+  </div>
+
+  <div class="section-title">System Context</div>
+  <div class="context-grid">
+    <div class="context-item"><div class="context-label">Node Target</div><div class="context-value">${nodeName}</div></div>
+    <div class="context-item"><div class="context-label">Hardware</div><div class="context-value">${hwDesc}</div></div>
+    <div class="context-item"><div class="context-label">Uptime</div><div class="context-value">${formatUptime(metrics.uptimeSeconds)}</div></div>
+    <div class="context-item"><div class="context-label">CPU Cores</div><div class="context-value">${cores}</div></div>
+    <div class="context-item"><div class="context-label">Peak Throughput</div><div class="context-value">${peakMips.toLocaleString()} MIPS</div></div>
+    <div class="context-item"><div class="context-label">Memory Bandwidth</div><div class="context-value">${memBw} GB/s</div></div>
+  </div>
+
+  <div class="section-title">Telemetry Snapshot</div>
+  <table>
+    <thead><tr><th>Metric</th><th>Value</th><th>Unit</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Active Power</td><td class="val">${formatMetric(metrics.powerW)}</td><td class="unit">W</td><td>Total package draw (IPMI OOB)</td></tr>
+      <tr><td>CPU Efficiency</td><td class="val">${formatMetric(metrics.ipsPerW / 1e6)}</td><td class="unit">M IPS/W</td><td>Instructions per watt</td></tr>
+      <tr><td>CPI</td><td class="val">${formatMetric(metrics.cpi)}</td><td class="unit">cycles/instr</td><td>Ideal: &lt;1.0</td></tr>
+      <tr><td>Memory AMAT</td><td class="val">${formatMetric(metrics.amat)}</td><td class="unit">cycles</td><td>Avg memory access time</td></tr>
+      <tr><td>Cache Miss Rate</td><td class="val">${formatMetric(metrics.cacheMiss)}</td><td class="unit">%</td><td>eBPF PMU counters</td></tr>
+      <tr><td>NUMA Miss Rate</td><td class="val">${formatMetric(metrics.numaMiss)}</td><td class="unit">%</td><td>Cross-NUMA-node fetches</td></tr>
+      <tr><td>TCP Retransmits</td><td class="val">${formatMetric(metrics.tcpRetrans)}</td><td class="unit">/s</td><td>eBPF kprobe top_retransmit_skb</td></tr>
+      <tr><td>Block Queue Depth</td><td class="val">${formatMetric(metrics.queueDepth)}</td><td class="unit">reqs</td><td>In-flight blk_mq requests</td></tr>
+      <tr><td>Disk IOPS</td><td class="val">${formatMetric(metrics.iops)}</td><td class="unit">iops</td><td>Completions/s (eBPF)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-title">Top-Down Microarchitecture Analysis (TMA)</div>
+  <div class="tma-container">
+    <div class="tma-bar">
+      <div class="tma-seg" style="width:${metrics.tmaRetiring}%; background:#22c55e;">${metrics.tmaRetiring}%</div>
+      <div class="tma-seg" style="width:${metrics.tmaBadSpec}%; background:#f97316;">${metrics.tmaBadSpec}%</div>
+      <div class="tma-seg" style="width:${metrics.tmaFrontEnd}%; background:#3b82f6;">${metrics.tmaFrontEnd}%</div>
+      <div class="tma-seg" style="width:${metrics.tmaBackEnd}%; background:#ef4444;">${metrics.tmaBackEnd}%</div>
+    </div>
+    <div class="tma-legend">
+      <div class="legend-item"><div class="dot" style="background:#22c55e"></div> Retiring (${metrics.tmaRetiring}%)</div>
+      <div class="legend-item"><div class="dot" style="background:#f97316"></div> Bad Speculation (${metrics.tmaBadSpec}%)</div>
+      <div class="legend-item"><div class="dot" style="background:#3b82f6"></div> Front-End Bound (${metrics.tmaFrontEnd}%)</div>
+      <div class="legend-item"><div class="dot" style="background:#ef4444"></div> Back-End Bound (${metrics.tmaBackEnd}%)</div>
+    </div>
+  </div>
+
+  <div class="section-title">Hardware Upgrade Analysis</div>
+  <table>
+    <thead><tr><th>Subsystem</th><th>Assessment</th><th>Verdict</th></tr></thead>
+    <tbody>
+      ${cpuRec}
+      ${memRec}
+      ${ioRec}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span>HQUD Foundry ${APP_VERSION} — Auto-generated</span>
+    <span>${isoTs}</span>
+  </div>
+</body>
+</html>`;
   
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
-  printWindow.document.write(html);
-  printWindow.document.close();
-  setTimeout(() => printWindow.print(), 800);
+  const w = window.open('', '_blank');
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 800);
+  }
 }
 
 export function Overview({ metrics, systemConfig }: Props) {

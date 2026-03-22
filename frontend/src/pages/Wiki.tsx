@@ -24,13 +24,13 @@ export function Wiki() {
 
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar Mini-nav */}
-        <aside className="w-96 border-r border-slate-800 bg-slate-950/20 hidden lg:flex flex-col">
+        <aside className="w-80 border-r border-slate-800 bg-slate-950/20 hidden lg:flex flex-col">
           <nav className="flex-1 p-6 space-y-4">
             {sections.map(s => (
               <button
                 key={s.id}
                 onClick={() => setActiveTab(s.id)}
-                className={`w-full text-left px-6 py-4 text-sm md:text-lg font-mono font-black transition-all ${activeTab === s.id ? 'bg-slate-800 text-teal-400 border-l-[6px] border-teal-500 shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}
+                className={`w-full text-left px-5 py-3 text-xs font-mono font-black transition-all ${activeTab === s.id ? 'bg-slate-800 text-teal-400 border-l-[4px] border-teal-500 shadow-lg' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'}`}
               >
                 {s.title}
               </button>
@@ -39,33 +39,33 @@ export function Wiki() {
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto bg-slate-900/10 p-12 md:p-20">
-          <div className="max-w-7xl mx-auto xl:mx-0">
+        <main className="flex-1 overflow-y-auto bg-slate-900/10 p-10 md:p-16">
+          <div className="max-w-5xl mx-auto xl:mx-0">
             {activeTab === 'roofline' && (
               <article className="bg-slate-800/40 border border-slate-700 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-2xl">
-                <div className="px-10 py-8 border-b border-slate-700 bg-slate-800/80">
-                  <h3 className="text-3xl font-black tracking-tight text-teal-400 uppercase">{sections[0].title}</h3>
-                  <p className="text-xs font-mono text-slate-500 uppercase tracking-[0.2em] font-black mt-2">{sections[0].subtitle}</p>
+                <div className="px-8 py-6 border-b border-slate-700 bg-slate-800/80">
+                  <h3 className="text-2xl font-black tracking-tight text-teal-400 uppercase">{sections[0].title}</h3>
+                  <p className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.2em] font-black mt-2">{sections[0].subtitle}</p>
                 </div>
-                <div className="p-10 md:p-16 text-slate-400 leading-relaxed space-y-12 text-xl">
+                <div className="p-10 md:p-12 text-slate-400 leading-relaxed space-y-8 text-sm md:text-base">
                   <p>
                     The Roofline model is an intuitive visual performance model used to provide performance estimates of a given compute kernel running on multi-core or accelerator architectures.
                   </p>
                   <p>
                     The key insight is the concept of <strong className="text-slate-200">Arithmetic Intensity (AI)</strong>, the ratio of floating-point operations (FLOPs) to bytes transferred from main memory.
                   </p>
-                  <div className="bg-slate-950 p-10 border border-slate-700 font-mono text-2xl md:text-3xl text-teal-400 font-black tracking-wider text-center flex flex-col gap-2">
-                    <span className="text-slate-600 text-sm mb-4 tracking-widest uppercase font-bold">Mathematical Definition</span>
+                  <div className="bg-slate-950 p-8 border border-slate-700 font-mono text-xl md:text-2xl text-teal-400 font-black tracking-wider text-center flex flex-col gap-2">
+                    <span className="text-slate-600 text-[10px] mb-2 tracking-widest uppercase font-bold">Mathematical Definition</span>
                     AI = Total FLOPs / Total Bytes from DRAM
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="bg-slate-900 border border-slate-700 p-8 border-t-2 border-teal-500">
-                      <div className="text-teal-400 font-mono text-sm font-black mb-4 tracking-widest">▬ MEMORY BANDWIDTH CEILING</div>
-                      <p className="text-lg">Performance = AI × Peak Memory Bandwidth. In this region, performance is limited by the speed of RAM.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-slate-900 border border-slate-700 p-6 border-t-2 border-teal-500">
+                      <div className="text-teal-400 font-mono text-[10px] font-black mb-3 tracking-widest uppercase">▬ MEMORY BANDWIDTH CEILING</div>
+                      <p className="text-xs">Performance = AI × Peak Memory Bandwidth. In this region, performance is limited by the speed of RAM.</p>
                     </div>
-                    <div className="bg-slate-900 border border-slate-700 p-8 border-t-2 border-red-500">
-                      <div className="text-red-400 font-mono text-sm font-black mb-4 tracking-widest">▬ PEAK COMPUTE CEILING</div>
-                      <p className="text-lg">The maximum instructions per second your hardware can process. To the right of the ridge point, adding RAM speed doesn't help.</p>
+                    <div className="bg-slate-900 border border-slate-700 p-6 border-t-2 border-red-500">
+                      <div className="text-red-400 font-mono text-[10px] font-black mb-3 tracking-widest uppercase">▬ PEAK COMPUTE CEILING</div>
+                      <p className="text-xs">The maximum instructions per second your hardware can process. To the right of the ridge point, adding RAM speed doesn't help.</p>
                     </div>
                   </div>
                   <p className="text-lg italic border-l-4 border-slate-700 pl-8 py-4 bg-slate-800/50">

@@ -87,19 +87,19 @@ export function Heatmap() {
     return '#DC2626';
   };
 
-  const bucketWidth = 120;
-  const rowHeight = devices.length === 1 ? 400 : Math.max(120, 600 / devices.length);
+  const bucketWidth = 100;
+  const rowHeight = devices.length === 1 ? 280 : Math.max(80, 500 / devices.length);
   const chartWidth = bucketWidth * EXPECTED_BUCKETS.length;
   const chartHeight = rowHeight * devices.length;
 
   return (
     <div className="bg-slate-800/40 border border-slate-700 flex flex-col w-full h-full overflow-hidden backdrop-blur-sm">
       <div className="px-6 py-4 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
-        <h3 className="text-sm font-black tracking-[0.2em] text-slate-300 uppercase">eBPF Block I/O Latency</h3>
-        <span className="text-[10px] font-mono text-teal-400 border border-teal-500/50 px-3 py-1 rounded-sm bg-teal-500/10 font-bold uppercase tracking-widest">Kernel Pipeline</span>
+        <h3 className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">eBPF Block I/O Latency</h3>
+        <span className="text-[9px] font-mono text-teal-400 border border-teal-400/30 px-3 py-1 bg-teal-400/5 font-black uppercase tracking-widest">Kernel Pipeline</span>
       </div>
       
-      <div className="flex-1 w-full bg-[#0F172A]/20 relative overflow-x-auto overflow-y-auto p-8 flex flex-col justify-center">
+      <div className="flex-1 w-full bg-[#0F172A]/20 relative overflow-x-auto overflow-y-auto p-10 flex flex-col justify-center">
         <svg 
           viewBox={`0 0 ${chartWidth + 120} ${chartHeight + 80}`} 
           className="w-full h-auto max-h-full"
@@ -113,7 +113,7 @@ export function Heatmap() {
               y={rowIndex * rowHeight + rowHeight / 2}
               textAnchor="end"
               dominantBaseline="middle"
-              className="font-mono text-xs fill-slate-500 uppercase font-black"
+              className="font-mono text-[10px] fill-slate-500 uppercase font-black"
             >
               {dev}
             </text>
@@ -132,12 +132,12 @@ export function Heatmap() {
                       <rect
                         x={rectX}
                         y={rectY}
-                        width={bucketWidth - 4}
-                        height={rowHeight - 4}
+                        width={bucketWidth - 2}
+                        height={rowHeight - 2}
                         fill={bucket.value > 0 ? getColor(bucket.value) : '#1E293B'}
                         stroke="#0F172A"
-                        strokeWidth="2"
-                        className="transition-colors duration-500"
+                        strokeWidth="1.5"
+                        className="transition-colors duration-500 hover:opacity-80"
                       />
                       {bucket.value > 0 && (
                         <text
@@ -145,7 +145,7 @@ export function Heatmap() {
                           y={rectY + rowHeight / 2}
                           textAnchor="middle"
                           dominantBaseline="middle"
-                          className="font-mono text-lg fill-white font-black pointer-events-none drop-shadow-lg"
+                          className="font-mono text-sm fill-white font-black pointer-events-none drop-shadow-md"
                         >
                           {Math.round(bucket.value)}
                         </text>
@@ -163,7 +163,7 @@ export function Heatmap() {
                 x={i * bucketWidth + bucketWidth / 2}
                 y={chartHeight + 40}
                 textAnchor="middle"
-                className="font-mono text-xs fill-slate-500 font-black tracking-widest"
+                className="font-mono text-[9px] fill-slate-500 font-black tracking-widest"
               >
                 {label}
               </text>

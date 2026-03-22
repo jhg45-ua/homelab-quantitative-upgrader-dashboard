@@ -1,5 +1,5 @@
 import type { MetricsState, SystemConfig } from '../types';
-import { Download, Cpu, HardDrive, Server } from 'lucide-preact';
+import { FileText, Cpu, Server } from 'lucide-preact';
 import { formatMetric, formatUptime } from '../utils/formatters';
 
 interface Props {
@@ -7,225 +7,156 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.6.10";
+const APP_VERSION = "v2.6.11";
 
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
   const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const isoTs = now.toISOString();
-  const nodeName = config?.node_name ?? 'Unknown';
-  const hwDesc = config?.hardware_desc ?? 'Unknown';
-  const cores = config?.specs.cores ?? 0;
-  const peakMips = config?.specs.peak_mips ?? 0;
-  const memBw = config?.specs.max_mem_bw_gbps ?? 0;
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) return;
 
-  // --- Hardware Upgrade Recommendation Engine ---
-  const cpi = metrics.cpi;
-  const amat = metrics.amat;
-  const queueDepth = metrics.queueDepth ?? 0;
-  const iops = metrics.iops ?? 0;
-  const inferredLatencyMs = iops > 0 ? (queueDepth / iops) * 1000 : 0;
+  const html = `
+    <html>
+      <head>
+        <title>HQUD Audit Report - ${config?.node_name || 'r720-baremetal'}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap');
+          body { font-family: 'Inter', sans-serif; background: #fff; color: #000; margin: 0; padding: 40px; }
+          .header { border-bottom: 4px solid #111827; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .title { font-size: 28px; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; }
+          .metadata { font-family: 'Roboto Mono', monospace; font-size: 11px; color: #666; text-transform: uppercase; }
+          .section-title { font-size: 12px; font-weight: 900; text-transform: uppercase; border-bottom: 2px solid #111827; padding-bottom: 5px; margin-bottom: 15px; margin-top: 30px; letter-spacing: 0.1em; color: #374151; }
+          .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+          .metric-card { border: 1px solid #E5E7EB; padding: 15px; }
+          .metric-label { font-size: 9px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; margin-bottom: 5px; }
+          .metric-value { font-size: 20px; font-weight: 900; font-family: 'Roboto Mono', monospace; color: #111827; }
+          .summary { background: #F9FAFB; padding: 20px; border-left: 6px solid #111827; margin: 30px 0; }
+          .footer { font-size: 9px; color: #9CA3AF; text-align: center; margin-top: 50px; font-family: 'Roboto Mono', monospace; border-top: 1px solid #E5E7EB; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div>
+            <div class="title">Hardware Audit Report</div>
+            <div class="metadata">Node: ${config?.node_name || 'r720-baremetal'} // HW: ${config?.hardware_desc || 'Dell R720'}</div>
+          </div>
+          <div style="text-align: right">
+            <div class="metadata">Generated: ${now.toLocaleString()}</div>
+            <div class="metadata">v${APP_VERSION} // ${now.toISOString()}</div>
+          </div>
+        </div>
 
-  const cpuRec = cpi > 1.5
-    ? `<tr class="warn"><td>CPU Subsystem</td><td>High CPI (${formatMetric(cpi)}). Pipeline stalls detected. Consider upgrading to a modern µArch or vectorizing hot workloads.</td><td class="badge-warn">UPGRADE RECOMMENDED</td></tr>`
-    : `<tr class="ok"><td>CPU Subsystem</td><td>Efficient CPI (${formatMetric(cpi)}). No immediate upgrade needed.</td><td class="badge-ok">OPTIMAL</td></tr>`;
+        <div class="section-title">Telemetry Snapshot</div>
+        <div class="grid">
+          <div class="metric-card"><div class="metric-label">Power</div><div class="metric-value">${formatMetric(metrics.powerW)} W</div></div>
+          <div class="metric-card"><div class="metric-label">Efficiency</div><div class="metric-value">${formatMetric(metrics.ipsPerW / 1e6)} M IPS/W</div></div>
+          <div class="metric-card"><div class="metric-label">Mem Latency</div><div class="metric-value">${formatMetric(metrics.amat)} cyc</div></div>
+          <div class="metric-card"><div class="metric-label">NUMA Miss</div><div class="metric-value">${formatMetric(metrics.numaMiss)} %</div></div>
+          <div class="metric-card"><div class="metric-label">TCP Retrans</div><div class="metric-value">${formatMetric(metrics.tcpRetrans)} /s</div></div>
+          <div class="metric-card"><div class="metric-label">Uptime</div><div class="metric-value">${formatUptime(metrics.uptimeSeconds)}</div></div>
+        </div>
 
-  const memRec = amat > 15
-    ? `<tr class="warn"><td>Memory / NUMA</td><td>High AMAT (${formatMetric(amat)} cyc). Consider higher-speed ECC RAM or strict NUMA CPU pinning via cpuset.</td><td class="badge-warn">TUNING REQUIRED</td></tr>`
-    : `<tr class="ok"><td>Memory / NUMA</td><td>AMAT is healthy (${formatMetric(amat)} cyc). Memory hierarchy within spec.</td><td class="badge-ok">OPTIMAL</td></tr>`;
+        <div class="summary">
+          <div class="section-title" style="border:none; margin-top:0">Foundry Assessment</div>
+          <p style="font-size: 13px; line-height: 1.5; color: #374151">
+            System performance is marked as <strong>${metrics.amat < 20 ? 'NOMINAL' : 'DEGRADED'}</strong>. 
+            AMAT of ${formatMetric(metrics.amat)} cycles suggests the memory subsystem is ${metrics.amat < 15 ? 'efficient' : 'experiencing minor stalls'}.
+          </p>
+        </div>
 
-  const ioRec = queueDepth > 5 && inferredLatencyMs > 20
-    ? `<tr class="crit"><td>Storage I/O</td><td>Disk bottleneck detected. Little's Law W = ${inferredLatencyMs.toFixed(1)} ms with queue depth ${formatMetric(queueDepth)}. NVMe upgrade strongly recommended.</td><td class="badge-crit">CRITICAL UPGRADE</td></tr>`
-    : `<tr class="ok"><td>Storage I/O</td><td>I/O latency within acceptable bounds (W ≈ ${inferredLatencyMs.toFixed(1)} ms). No storage upgrade needed.</td><td class="badge-ok">OPTIMAL</td></tr>`;
-
-  const upgradeSection = `
-  <div class="section-title" style="margin-top:40px">Hardware Upgrade Analysis</div>
-  <table>
-    <thead><tr><th>Subsystem</th><th>Assessment</th><th>Verdict</th></tr></thead>
-    <tbody>${cpuRec}${memRec}${ioRec}</tbody>
-  </table>`;
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>HQUD Audit Report — ${dateStr}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-  <style>
-    *  { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; color: #111827; padding: 48px 56px; max-width: 960px; margin: 0 auto; font-size: 14px; line-height: 1.5; }
-    
-    .header { border-top: 6px solid #0F172A; padding-top: 22px; margin-bottom: 44px; }
-    .title { font-weight: 800; font-size: 26px; letter-spacing: -0.04em; text-transform: uppercase; color: #0F172A; }
-    .subtitle { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #6B7280; margin-top: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
-    
-    .section-title { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #6B7280; margin: 36px 0 14px 0; }
-    
-    .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px 32px; margin-bottom: 40px; padding: 20px 24px; background: #F9FAFB; border-left: 3px solid #0F172A; }
-    .meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #9CA3AF; margin-bottom: 3px; }
-    .meta-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #111827; }
-
-    /* Booktabs-style table: no vertical lines, thick top/bottom, thin header rule */
-    table { width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
-    thead tr { border-top: 2px solid #111827; border-bottom: 1px solid #111827; }
-    th { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 10px 8px; text-align: left; color: #374151; border: none; }
-    td { padding: 11px 8px; border: none; border-bottom: 1px solid #E5E7EB; color: #111827; }
-    tbody tr:last-child { border-bottom: 2px solid #111827; }
-    .num { text-align: right; }
-    .unit { color: #6B7280; font-size: 11px; }
-    
-    .tma-bar { display: flex; height: 36px; border-radius: 2px; overflow: hidden; margin: 16px 0; }
-    .tma-seg { display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-    .tma-legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
-    .tma-legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #374151; font-family: 'Inter', sans-serif; }
-    .tma-dot { width: 10px; height: 10px; flex-shrink: 0; border-radius: 2px; }
-
-    /* Upgrade analysis verdict styles */
-    tr.ok td { color: #111827; }
-    tr.warn td { color: #92400E; background: #FFFBEB; }
-    tr.crit td { color: #7F1D1D; background: #FEF2F2; font-weight: 600; }
-    .badge-ok { color: #059669; font-weight: 700; font-family: 'Inter', sans-serif; white-space: nowrap; }
-    .badge-warn { color: #D97706; font-weight: 700; font-family: 'Inter', sans-serif; white-space: nowrap; }
-    .badge-crit { color: #DC2626; font-weight: 700; font-family: 'Inter', sans-serif; white-space: nowrap; }
-    
-    .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #E5E7EB; font-size: 10px; color: #9CA3AF; font-family: 'JetBrains Mono', monospace; display: flex; justify-content: space-between; }
-    
-    @media print {
-      body { padding: 32px 40px; }
-      @page { margin: 20mm; }
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="title">Hardware Quantitative Upgrader Dashboard</div>
-    <div class="subtitle">Microarchitecture Audit Report &nbsp;// &nbsp;${isoTs}</div>
-  </div>
-
-  <div class="section-title">System Context</div>
-  <div class="meta-grid">
-    <div><div class="meta-label">Node Target</div><div class="meta-value">${nodeName}</div></div>
-    <div><div class="meta-label">Hardware</div><div class="meta-value">${hwDesc}</div></div>
-    <div><div class="meta-label">Uptime</div><div class="meta-value">${formatUptime(metrics.uptimeSeconds)}</div></div>
-    <div><div class="meta-label">CPU Cores</div><div class="meta-value">${cores}</div></div>
-    <div><div class="meta-label">Peak Throughput</div><div class="meta-value">${peakMips.toLocaleString()} MIPS</div></div>
-    <div><div class="meta-label">Memory Bandwidth</div><div class="meta-value">${memBw} GB/s</div></div>
-  </div>
-
-  <div class="section-title">Telemetry Snapshot</div>
-  <table>
-    <thead><tr><th>Metric</th><th class="num">Value</th><th>Unit</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Active Power</td><td class="num">${formatMetric(metrics.powerW)}</td><td class="unit">W</td><td>Total package draw (IPMI OOB)</td></tr>
-      <tr><td>CPU Efficiency</td><td class="num">${formatMetric(metrics.ipsPerW / 1e6)}</td><td class="unit">M IPS/W</td><td>Instructions per watt</td></tr>
-      <tr><td>CPI</td><td class="num">${formatMetric(metrics.cpi)}</td><td class="unit">cycles/instr</td><td>Ideal: &lt;1.0</td></tr>
-      <tr><td>Memory AMAT</td><td class="num">${formatMetric(metrics.amat)}</td><td class="unit">cycles</td><td>Avg memory access time</td></tr>
-      <tr><td>Cache Miss Rate</td><td class="num">${formatMetric(metrics.cacheMiss)}</td><td class="unit">%</td><td>eBPF PMU counters</td></tr>
-      <tr><td>NUMA Miss Rate</td><td class="num">${formatMetric(metrics.numaMiss)}</td><td class="unit">%</td><td>Cross-NUMA-node fetches</td></tr>
-      <tr><td>TCP Retransmits</td><td class="num">${formatMetric(metrics.tcpRetrans)}</td><td class="unit">/s</td><td>eBPF kprobe tcp_retransmit_skb</td></tr>
-      <tr><td>Block Queue Depth</td><td class="num">${formatMetric(metrics.queueDepth)}</td><td class="unit">reqs</td><td>In-flight blk_mq requests</td></tr>
-      <tr><td>Disk IOPS</td><td class="num">${formatMetric(metrics.iops)}</td><td class="unit">iops</td><td>Completions/s (eBPF)</td></tr>
-    </tbody>
-  </table>
-
-  <div class="section-title" style="margin-top:36px">Top-Down Microarchitecture Analysis (TMA)</div>
-  <div class="tma-bar">
-    <div class="tma-seg" style="width:${metrics.tmaRetiring}%; background:#22c55e;">${metrics.tmaRetiring}%</div>
-    <div class="tma-seg" style="width:${metrics.tmaBadSpec}%; background:#f97316;">${metrics.tmaBadSpec}%</div>
-    <div class="tma-seg" style="width:${metrics.tmaFrontEnd}%; background:#3b82f6;">${metrics.tmaFrontEnd}%</div>
-    <div class="tma-seg" style="width:${metrics.tmaBackEnd}%; background:#ef4444;">${metrics.tmaBackEnd}%</div>
-  </div>
-  <div class="tma-legend">
-    <div class="tma-legend-item"><div class="tma-dot" style="background:#22c55e"></div> Retiring (${metrics.tmaRetiring}%)</div>
-    <div class="tma-legend-item"><div class="tma-dot" style="background:#f97316"></div> Bad Speculation (${metrics.tmaBadSpec}%)</div>
-    <div class="tma-legend-item"><div class="tma-dot" style="background:#3b82f6"></div> Front-End Bound (${metrics.tmaFrontEnd}%)</div>
-    <div class="tma-legend-item"><div class="tma-dot" style="background:#ef4444"></div> Back-End Bound (${metrics.tmaBackEnd}%)</div>
-  </div>
-
-  ${upgradeSection}
-  <div class="footer">
-    <span>HQUD Foundry ${APP_VERSION} — Auto-generated</span>
-    <span>${isoTs}</span>
-  </div>
-</body>
-</html>`;
-
-  const w = window.open('', '_blank');
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-    setTimeout(() => w.print(), 800);
-  }
+        <div class="footer">
+          DOCUMENT CLASSIFIED // HQUD QUANTITATIVE AUDIT ENGINE // v${APP_VERSION}
+        </div>
+      </body>
+    </html>
+  `;
+  
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.print();
 }
 
 export function Overview({ metrics, systemConfig }: Props) {
   return (
-    <div className="flex flex-col h-full bg-slate-900">
-      <header className="bg-slate-900 border-b border-slate-800 px-8 md:px-12 py-8 flex justify-between items-center shrink-0">
+    <div className="flex flex-col gap-10 animate-in fade-in duration-700">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
         <div>
-           <h2 className="text-2xl md:text-4xl font-extrabold tracking-tighter text-slate-100 uppercase line-clamp-1">
-             Executive Overview
-           </h2>
-           <div className="text-xs font-mono text-slate-500 mt-2 uppercase tracking-[0.2em] hidden md:block">
-             Real-time Performance Telemetry // Super-Scale Foundry Engine
-           </div>
+          <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-slate-100 uppercase">
+            Executive Overview
+          </h2>
+          <div className="text-[10px] font-mono text-slate-500 mt-2 uppercase tracking-[0.3em] font-black">
+            Real-time Performance Telemetry // Foundry Engine Core
+          </div>
         </div>
-        
         <button 
           onClick={() => generateAuditReport(metrics, systemConfig)}
-          className="flex items-center gap-3 px-8 py-4 bg-transparent border-2 border-slate-700 text-slate-100 hover:text-white hover:bg-slate-800 hover:border-teal-500 transition-all rounded-sm text-sm font-black tracking-widest uppercase">
-          <Download size={20} />
-          <span>Export Audit Report (PDF)</span>
+          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-6 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest text-slate-300 transition-all flex items-center gap-3 active:scale-95"
+        >
+          <FileText size={14} />
+          Export Audit Report (PDF)
         </button>
       </header>
 
-      <div className="flex-1 w-full h-full p-8 md:p-12 xl:p-16 flex flex-col gap-16 overflow-y-auto">
-        <div>
-          <h3 className="text-slate-500 font-mono uppercase tracking-[0.3em] text-sm mb-8 font-black border-l-4 border-teal-500 pl-4">Core Datasheets</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-12">
-             <DatasheetCard title="ACTIVE POWER" value={metrics.powerW !== null ? formatMetric(metrics.powerW) : '-'} unit="W" footer="Total Package Draw" />
-             <DatasheetCard title="CPU EFFICIENCY" value={metrics.ipsPerW !== null ? formatMetric(metrics.ipsPerW / 1e6) : '-'} unit="M IPS/W" footer="Instr. per Watt" valueColor="text-teal-400" />
-             <DatasheetCard title="MEMORY AMAT" value={metrics.amat !== null ? formatMetric(metrics.amat) : '-'} unit="cyc" footer="Avg Mem Access Time" />
-             <DatasheetCard title="NUMA MISS RATE" value={metrics.numaMiss !== null ? formatMetric(metrics.numaMiss) : '-'} unit="%" footer="Cross-node Fetches" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <DatasheetCard 
+          title="ACTIVE POWER" 
+          value={metrics.powerW !== null ? formatMetric(metrics.powerW) : '-'} 
+          unit="W" 
+          footer="Total Package Draw" 
+        />
+        <DatasheetCard 
+          title="CPU EFFICIENCY" 
+          value={metrics.ipsPerW !== null ? formatMetric(metrics.ipsPerW / 1e6) : '-'} 
+          unit="M IPS/W" 
+          footer="Instr. per Watt" 
+          valueColor="text-teal-400" 
+        />
+        <DatasheetCard 
+          title="MEMORY AMAT" 
+          value={metrics.amat !== null ? formatMetric(metrics.amat) : '-'} 
+          unit="cyc" 
+          footer="Avg Mem Access Time" 
+        />
+        <DatasheetCard 
+          title="NUMA MISS RATE" 
+          value={metrics.numaMiss !== null ? formatMetric(metrics.numaMiss) : '-'} 
+          unit="%" 
+          footer="Cross-node Fetches" 
+        />
+        <DatasheetCard 
+          title="TCP RETRANSMITS" 
+          value={metrics.tcpRetrans !== null ? formatMetric(metrics.tcpRetrans) : '-'} 
+          unit="/s" 
+          footer="Network Reliability" 
+        />
+        <DatasheetCard 
+          title="SYSTEM UPTIME" 
+          value={metrics.uptimeSeconds !== null ? formatUptime(metrics.uptimeSeconds) : '-'} 
+          unit="" 
+          footer="Node Dependability" 
+          valueColor="text-emerald-400"
+        />
+      </div>
 
-             {/* v2.6.2: Strict !== null guard — treats 0 as valid */}
-             <div className="bg-slate-800/40 border border-slate-700 p-12 backdrop-blur-sm">
-               <div className="text-xs font-mono text-slate-500 uppercase tracking-[0.2em] mb-4 font-black">TCP RETRANSMITS</div>
-               <div className="text-6xl md:text-8xl font-mono text-slate-100 font-black tracking-tighter">
-                 {metrics.tcpRetrans !== null ? formatMetric(metrics.tcpRetrans) : '-'}
-                 <span className="text-xl text-slate-500 ml-4 font-normal">/s</span>
-               </div>
-               <div className="text-xs text-slate-500 mt-6 uppercase tracking-widest font-bold">Network Reliability Pipeline</div>
-             </div>
-
-             {/* v2.6.2: Strict !== null guard for Uptime */}
-             <div className="bg-slate-800/40 border border-slate-700 p-12 backdrop-blur-sm">
-               <div className="text-xs font-mono text-slate-500 uppercase tracking-[0.2em] mb-4 font-black">SYSTEM UPTIME</div>
-               <div className="text-6xl md:text-8xl font-mono text-teal-400 font-black tracking-tighter">
-                 {metrics.uptimeSeconds !== null ? formatUptime(metrics.uptimeSeconds) : '-'}
-               </div>
-               <div className="text-xs text-slate-500 mt-6 uppercase tracking-widest font-bold">Node Dependability</div>
-             </div>
-          </div>
+      <div className="mt-4">
+        <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em] font-black mb-6 flex items-center gap-4">
+           <span>System Metadata</span>
+           <div className="flex-1 h-px bg-slate-800"></div>
         </div>
-
-        <div>
-           <h3 className="text-slate-500 font-mono uppercase tracking-[0.3em] text-sm mb-8 font-black border-l-4 border-slate-700 pl-4">System Metadata</h3>
-           <div className="bg-slate-800/40 border border-slate-700 p-12 md:p-16 text-slate-300 backdrop-blur-sm">
-            {systemConfig ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-12">
-                <ConfigRow icon={<Server size={32} className="text-slate-500" />} label="NODE NAME" value={systemConfig.node_name || '—'} />
-                <ConfigRow icon={<Cpu size={32} className="text-slate-500" />} label="HARDWARE" value={systemConfig.hardware_desc || '—'} />
-                <ConfigRow icon={<Cpu size={32} className="text-slate-500" />} label="CORES" value={`${systemConfig.specs.cores} Cores`} />
-                <ConfigRow icon={<HardDrive size={32} className="text-slate-500" />} label="PEAK THROUGHPUT" value={`${systemConfig.specs.peak_mips.toLocaleString()} MIPS`} />
-                <ConfigRow icon={<HardDrive size={32} className="text-slate-500" />} label="MEMORY BANDWIDTH" value={`${systemConfig.specs.max_mem_bw_gbps} GB/s`} />
+        <div className="bg-slate-800/20 border border-slate-800/50 p-8 flex flex-col md:flex-row gap-12 text-slate-300">
+           <div className="flex items-center gap-6">
+              <Server size={32} className="text-slate-600" />
+              <div>
+                 <div className="text-[8px] font-mono text-slate-500 uppercase tracking-widest font-black mb-1">Node Name</div>
+                 <div className="font-mono text-lg md:text-xl font-bold">{systemConfig?.node_name || 'r720-baremetal'}</div>
               </div>
-            ) : (
-              <div className="text-slate-500 font-mono text-lg animate-pulse">Requesting system configuration telemetry from /api/hardware...</div>
-            )}
-          </div>
+           </div>
+           <div className="flex items-center gap-6">
+              <Cpu size={32} className="text-slate-600" />
+              <div>
+                 <div className="text-[8px] font-mono text-slate-500 uppercase tracking-widest font-black mb-1">Hardware</div>
+                 <div className="font-bold text-lg md:text-xl">{systemConfig?.hardware_desc || 'Dell PowerEdge R720'}</div>
+              </div>
+           </div>
         </div>
       </div>
     </div>
@@ -234,25 +165,18 @@ export function Overview({ metrics, systemConfig }: Props) {
 
 function DatasheetCard({ title, value, unit, footer, valueColor = "text-slate-100" }: any) {
   return (
-    <div className="bg-slate-800/40 border border-slate-700 p-12 backdrop-blur-sm group hover:border-slate-500 transition-colors">
-      <div className="text-xs font-mono text-slate-500 uppercase tracking-[0.2em] mb-4 font-black group-hover:text-amber-400 transition-colors">{title}</div>
-      <div className={`text-6xl md:text-8xl font-mono ${valueColor} font-black tracking-tighter`}>
-        {value}
-        <span className="text-xl text-slate-500 ml-4 font-normal uppercase">{unit}</span>
+    <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col justify-between group hover:border-teal-500/30 transition-all backdrop-blur-sm shadow-xl">
+      <div>
+        <div className="text-slate-400 text-[10px] font-mono font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-slate-500 group-hover:bg-teal-400 transition-colors"></div>
+          {title}
+        </div>
+        <div className="flex items-baseline gap-4">
+          <span className={`text-5xl md:text-6xl font-black ${valueColor} tabular-nums tracking-tighter drop-shadow-md`}>{value}</span>
+          <span className="text-sm font-mono text-slate-500 font-bold uppercase">{unit}</span>
+        </div>
       </div>
-      <div className="text-xs text-slate-500 mt-6 uppercase tracking-widest font-bold">{footer}</div>
-    </div>
-  );
-}
-
-function ConfigRow({ icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-8 border-b border-slate-700/50 pb-8">
-      <div className="shrink-0">{icon}</div>
-      <div className="flex-1">
-        <div className="text-sm text-slate-500 uppercase tracking-[0.2em] font-black mb-2">{label}</div>
-        <div className="text-xl md:text-3xl text-slate-100 font-mono font-black">{value}</div>
-      </div>
+      <p className="text-[9px] font-mono text-slate-600 mt-6 uppercase tracking-widest font-bold">{footer}</p>
     </div>
   );
 }

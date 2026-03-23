@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { MetricsState, HistoryFrame, LogEntry } from '../types';
-import { parsePromQLResponse, formatMetric, formatUptime } from '../utils/formatters';
+import { parsePromQLResponse, parsePromQLResponseByLabel, formatMetric, formatUptime } from '../utils/formatters';
 
 // ============================================================================
 // TMA DERIVATION CONSTANTS
@@ -50,10 +50,31 @@ async function fetchMetric(metricName: string, rawQuery?: string): Promise<numbe
   }
 }
 
+async function fetchMetricSeriesByLabel(metricName: string, labelName: string, rawQuery?: string): Promise<Record<string, number>> {
+  const query = rawQuery ?? `${metricName}{host="${HOST}"}`;
+  try {
+    const res = await fetch(`/api/v1/query?query=${encodeURIComponent(query)}`);
+    if (!res.ok) {
+      console.error(`[HQUD] HTTP ${res.status} for query: ${query}`);
+      return {};
+    }
+    const json = await res.json();
+    return parsePromQLResponseByLabel(metricName, json, labelName);
+  } catch (err: any) {
+    console.error(`[HQUD] Network error for ${metricName}:`, err.message);
+    return {};
+  }
+}
+
 export function useMetrics() {
   const [metrics, setMetrics] = useState<MetricsState>({
-    powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, numaNode0Cpu: 0, numaNode1Cpu: 0, numaInterconnectTraffic: 0,
-    memBoundValid: false, coreBoundValid: false, numaNode1CpuValid: false, tcpRetrans: 0,
+    powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0,
+    numaNodeCpuUsagePercentByNode: {},
+    numaNodeRamUsedBytesByNode: {},
+    numaNodeRamTotalBytesByNode: {},
+    numaInterconnectTrafficBytesTotalByNode: {},
+    numaNodesAvailable: [],
+    memBoundValid: false, coreBoundValid: false, tcpRetrans: 0,
     ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0, uptimeSeconds: 0,
     tmaRetiring: 0, tmaBadSpec: 0, tmaFrontEnd: 0, tmaBackEnd: 0,
     memBound: 0, coreBound: 0,
@@ -75,7 +96,10 @@ export function useMetrics() {
           powerW, ipsPerW, amat, numaMiss, tcpRetrans,
           ips, cpi, cacheMiss, ctxSwitches, uptimeSeconds,
           queueDepth, iops, memBoundRaw, coreBoundRaw,
-          numaNode0CpuRaw, numaNode1CpuRaw, numaInterconnectTrafficRaw,
+          numaNodeCpuByNode,
+          numaNodeRamUsedByNode,
+          numaNodeRamTotalByNode,
+          numaInterconnectTrafficByNode,
         ] = await Promise.all([
           fetchMetric('hqud_power_watts'),
           fetchMetric('hqud_efficiency_ips_per_watt'),
@@ -91,9 +115,10 @@ export function useMetrics() {
           fetchMetric('hqud_blk_iops'),
           fetchMetric('hqud_tma_mem_bound'),
           fetchMetric('hqud_tma_core_bound'),
-          fetchMetric('hqud_numa_node0_cpu'),
-          fetchMetric('hqud_numa_node1_cpu'),
-          fetchMetric('hqud_numa_interconnect_traffic'),
+          fetchMetricSeriesByLabel('hqud_numa_node_cpu_usage_percent', 'node'),
+          fetchMetricSeriesByLabel('hqud_numa_node_ram_used_bytes', 'node'),
+          fetchMetricSeriesByLabel('hqud_numa_node_ram_total_bytes', 'node'),
+          fetchMetricSeriesByLabel('hqud_numa_interconnect_traffic_bytes_total', 'node'),
         ]);
 
         setMetrics(() => {
@@ -107,12 +132,18 @@ export function useMetrics() {
             ipsPerW:       Number(ipsPerW) || 0,
             amat:          Number(amat) || 0,
             numaMiss:      Number(numaMiss) || 0,
-            numaNode0Cpu:  Number(numaNode0CpuRaw) || 0,
-            numaNode1Cpu:  Number(numaNode1CpuRaw) || 0,
-            numaInterconnectTraffic: Number(numaInterconnectTrafficRaw) || 0,
+            numaNodeCpuUsagePercentByNode: numaNodeCpuByNode,
+            numaNodeRamUsedBytesByNode: numaNodeRamUsedByNode,
+            numaNodeRamTotalBytesByNode: numaNodeRamTotalByNode,
+            numaInterconnectTrafficBytesTotalByNode: numaInterconnectTrafficByNode,
+            numaNodesAvailable: Array.from(new Set([
+              ...Object.keys(numaNodeCpuByNode),
+              ...Object.keys(numaNodeRamUsedByNode),
+              ...Object.keys(numaNodeRamTotalByNode),
+              ...Object.keys(numaInterconnectTrafficByNode),
+            ])).sort(),
             memBoundValid: memBoundRaw !== null,
             coreBoundValid: coreBoundRaw !== null,
-            numaNode1CpuValid: numaNode1CpuRaw !== null,
             tcpRetrans:    Number(tcpRetrans) || 0,
             ips:           Number(ips) || 0,
             cpi:           nextCpi,
@@ -137,9 +168,11 @@ export function useMetrics() {
             `cpi:${formatMetric(nextCpi)} ` +
             `amat:${formatMetric(amat)}cyc ` +
             `numa:${formatMetric(numaMiss)}% ` +
-            `numa_node0_cpu:${formatMetric(numaNode0CpuRaw)} ` +
-            `numa_node1_cpu:${formatMetric(numaNode1CpuRaw)} ` +
-            `numa_interconnect_traffic:${formatMetric(numaInterconnectTrafficRaw)} ` +
+            `numa_nodes:${next.numaNodesAvailable.join(',') || '-'} ` +
+            `numa_node0_cpu:${formatMetric(next.numaNodeCpuUsagePercentByNode.node0)} ` +
+            `numa_node1_cpu:${formatMetric(next.numaNodeCpuUsagePercentByNode.node1)} ` +
+            `numa_interconnect_node0_bytes_total:${formatMetric(next.numaInterconnectTrafficBytesTotalByNode.node0)} ` +
+            `numa_interconnect_node1_bytes_total:${formatMetric(next.numaInterconnectTrafficBytesTotalByNode.node1)} ` +
             `tcp:${formatMetric(tcpRetrans)} ` +
             `miss:${formatMetric(cacheMiss)}% ` +
             `mem_bnd:${formatMetric(memBoundRaw)}% ` +

@@ -16,12 +16,13 @@ export interface MetricsState {
   ipsPerW: number;
   amat: number;
   numaMiss: number;
-  numaNode0Cpu: number;
-  numaNode1Cpu: number;
-  numaInterconnectTraffic: number;
+  numaNodeCpuUsagePercentByNode: Record<string, number>;
+  numaNodeRamUsedBytesByNode: Record<string, number>;
+  numaNodeRamTotalBytesByNode: Record<string, number>;
+  numaInterconnectTrafficBytesTotalByNode: Record<string, number>;
+  numaNodesAvailable: string[];
   memBoundValid: boolean;
   coreBoundValid: boolean;
-  numaNode1CpuValid: boolean;
   tcpRetrans: number;
   ips: number;
   cpi: number;

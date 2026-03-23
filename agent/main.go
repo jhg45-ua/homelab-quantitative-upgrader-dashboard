@@ -140,7 +140,7 @@ func main() {
 		log.Fatalf("Failed to read initial PMU counters: %v", err)
 	}
 
-	prevNumaStats, _ := numa.Collect()
+	numaCollector := numa.NewCollector()
 
 	// Previous TCP retransmit count for delta computation
 	var prevTcpRetransmits uint64 = 0
@@ -414,67 +414,51 @@ func main() {
 			}
 		}
 
-		// --- MODULE A v2: NUMA Miss Rate (sysfs — works inside KVM VMs) ---
-		numaStats, numaErr := numa.Collect()
+		// --- MODULE A v3: NUMA CPU/RAM/Interconnect (real per-node values from sysfs/proc) ---
+		numaStats, numaErr := numaCollector.Collect()
 		if numaErr != nil {
 			log.Printf("[NUMA] sysfs read skipped: %v", numaErr)
 		} else {
-			numaMissRate := numaStats.MissRate()
-			deltaNode0Local := calculateDelta(numaStats.Node0LocalNode, prevNumaStats.Node0LocalNode)
-			deltaNode0Other := calculateDelta(numaStats.Node0OtherNode, prevNumaStats.Node0OtherNode)
-			deltaNode1Local := calculateDelta(numaStats.Node1LocalNode, prevNumaStats.Node1LocalNode)
-			deltaNode1Other := calculateDelta(numaStats.Node1OtherNode, prevNumaStats.Node1OtherNode)
-			totalNode0 := deltaNode0Local + deltaNode0Other
-			totalNode1 := deltaNode1Local + deltaNode1Other
-			numaNode0Cpu := 0.0
-			numaNode1Cpu := 0.0
-			node1Seen := totalNode1 > 0
-			if totalNode0 > 0 {
-				numaNode0Cpu = (float64(deltaNode0Local) / float64(totalNode0)) * 100.0
-			}
-			if node1Seen {
-				numaNode1Cpu = (float64(deltaNode1Local) / float64(totalNode1)) * 100.0
-			}
-			numaInterconnectTraffic := float64(deltaNode0Other) / 5.0
-			prevNumaStats = numaStats
-
-			log.Printf("--- NUMA Miss Rate: %.2f%% (Hits: %d, Misses: %d) ---",
-				numaMissRate, numaStats.TotalHits, numaStats.TotalMisses)
-			log.Printf("--- NUMA Node0 Local Share: %.2f%% | Node1 Local Share: %.2f%% | Interconnect Traffic: %.2f access/s ---", numaNode0Cpu, numaNode1Cpu, numaInterconnectTraffic)
-
-			go func(missRate, node0Cpu, node1Cpu, interconnect float64, hasNode1 bool) {
-				numaMetrics := []tsdb.Metric{
-					{
-						Name:      "hqud_numa_miss_rate",
-						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
-						Value:     missRate,
-						Timestamp: now,
-					},
-					{
-						Name:      "hqud_numa_node0_cpu",
-						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
-						Value:     node0Cpu,
-						Timestamp: now,
-					},
-					{
-						Name:      "hqud_numa_interconnect_traffic",
-						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
-						Value:     interconnect,
-						Timestamp: now,
-					},
-				}
-				if hasNode1 {
-					numaMetrics = append(numaMetrics, tsdb.Metric{
-						Name:      "hqud_numa_node1_cpu",
-						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
-						Value:     node1Cpu,
-						Timestamp: now,
-					})
+			go func(samples []numa.NodeMetrics) {
+				numaMetrics := make([]tsdb.Metric, 0, len(samples)*4)
+				for _, sample := range samples {
+					labels := map[string]string{
+						"host":   cfg.Agent.NodeName,
+						"modulo": "numa_sysfs",
+						"node":   sample.Node,
+					}
+					numaMetrics = append(numaMetrics,
+						tsdb.Metric{
+							Name:      "hqud_numa_node_cpu_usage_percent",
+							Labels:    labels,
+							Value:     sample.CPUUsagePercent,
+							Timestamp: now,
+						},
+						tsdb.Metric{
+							Name:      "hqud_numa_node_ram_used_bytes",
+							Labels:    labels,
+							Value:     float64(sample.RAMUsedBytes),
+							Timestamp: now,
+						},
+						tsdb.Metric{
+							Name:      "hqud_numa_node_ram_total_bytes",
+							Labels:    labels,
+							Value:     float64(sample.RAMTotalBytes),
+							Timestamp: now,
+						},
+						tsdb.Metric{
+							Name:      "hqud_numa_interconnect_traffic_bytes_total",
+							Labels:    labels,
+							Value:     float64(sample.InterconnectTrafficBytesTotal),
+							Timestamp: now,
+						},
+					)
+					log.Printf("--- NUMA %s: cpu=%.2f%% ram_used=%dB ram_total=%dB qpi_total=%dB ---", sample.Node, sample.CPUUsagePercent, sample.RAMUsedBytes, sample.RAMTotalBytes, sample.InterconnectTrafficBytesTotal)
 				}
 				if err := tsdbClient.Push(numaMetrics); err != nil {
 					log.Printf("TSDB push NUMA failed: %v", err)
 				}
-			}(numaMissRate, numaNode0Cpu, numaNode1Cpu, numaInterconnectTraffic, node1Seen)
+			}(numaStats)
 		}
 
 		// --- MODULE F: TCP Retransmit Rate ---

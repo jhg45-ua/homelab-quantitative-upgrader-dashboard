@@ -30,6 +30,48 @@ export const parsePromQLResponse = (metricName: string, responseData: any): numb
 };
 
 /**
+ * Parses a PromQL instant-query response with multiple series and returns
+ * values grouped by a label (for example: node=node0/node1).
+ */
+export const parsePromQLResponseByLabel = (
+  metricName: string,
+  responseData: any,
+  labelName: string,
+): Record<string, number> => {
+  const result = responseData?.data?.result;
+
+  console.groupCollapsed(`[HQUD TELEMETRY] 📡 ${metricName} by ${labelName}`);
+  console.log('Raw JSON:', responseData);
+
+  if (!result || result.length === 0) {
+    console.warn(`⚠️ No data returned for ${metricName} (Empty result array)`);
+    console.groupEnd();
+    return {};
+  }
+
+  const values: Record<string, number> = {};
+  for (const series of result) {
+    const labelValue = series?.metric?.[labelName];
+    const rawValue = series?.value?.[1];
+    if (!labelValue) {
+      continue;
+    }
+
+    const parsedValue = Number(rawValue);
+    if (isNaN(parsedValue)) {
+      console.warn(`⚠️ Parse error for ${metricName} label ${labelValue}. Raw value:`, rawValue);
+      continue;
+    }
+
+    values[labelValue] = parsedValue;
+  }
+
+  console.log('✅ Parsed Values:', values);
+  console.groupEnd();
+  return values;
+};
+
+/**
  * Formats a metric value to at most 2 decimal places.
  * Returns '-' only for null/undefined. 0 renders as "0".
  */

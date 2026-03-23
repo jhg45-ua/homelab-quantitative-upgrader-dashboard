@@ -21,46 +21,55 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function formatBytesToGiB(value: number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return 'N/A';
+  }
+  const num = Number(value);
+  if (Number.isNaN(num)) {
+    return 'N/A';
+  }
+  return `${(num / (1024 ** 3)).toFixed(2)} GiB`;
+}
+
 export function VisualNumaTopology({ metrics }: Props) {
   const ipcBase = metrics.cpi > 0 ? 1 / metrics.cpi : 0;
-  const node1Seen = metrics.numaNode1CpuValid;
-  const ramReady = metrics.memBoundValid || metrics.coreBoundValid;
+  const node1Seen = metrics.numaNodesAvailable.includes('node1');
+  const node0CpuPct = metrics.numaNodeCpuUsagePercentByNode.node0 ?? 0;
+  const node1CpuPct = metrics.numaNodeCpuUsagePercentByNode.node1 ?? 0;
   const node0Cpu: CpuSnapshot = {
-    loadPct: clamp(Number(metrics.numaNode0Cpu) || 0, 0, 100),
+    loadPct: clamp(Number(node0CpuPct) || 0, 0, 100),
     ipc: clamp(ipcBase, 0, 10),
   };
   const node1Cpu: CpuSnapshot = {
-    loadPct: node1Seen ? clamp(Number(metrics.numaNode1Cpu) || 0, 0, 100) : 0,
+    loadPct: node1Seen ? clamp(Number(node1CpuPct) || 0, 0, 100) : 0,
     ipc: clamp(ipcBase, 0, 10),
   };
 
   const node0Ram: RamSnapshot = {
-    used: metrics.memBoundValid ? clamp(Number(metrics.memBound) || 0, 0, 100) : null,
-    total: metrics.memBoundValid ? 100 : null,
-    available: metrics.memBoundValid,
+    used: metrics.numaNodeRamUsedBytesByNode.node0 ?? null,
+    total: metrics.numaNodeRamTotalBytesByNode.node0 ?? null,
+    available: metrics.numaNodeRamTotalBytesByNode.node0 !== undefined,
   };
   const node1Ram: RamSnapshot = {
-    used: metrics.coreBoundValid ? clamp(Number(metrics.coreBound) || 0, 0, 100) : null,
-    total: metrics.coreBoundValid ? 100 : null,
-    available: metrics.coreBoundValid,
+    used: metrics.numaNodeRamUsedBytesByNode.node1 ?? null,
+    total: metrics.numaNodeRamTotalBytesByNode.node1 ?? null,
+    available: metrics.numaNodeRamTotalBytesByNode.node1 !== undefined,
   };
   const node0RamReady = node0Ram.available && node0Ram.used !== null;
   const node1RamReady = node1Ram.available && node1Ram.used !== null;
 
-  const qpiCrossTrafficGbps = Math.max(0, Number(metrics.numaInterconnectTraffic) || 0);
+  const totalInterconnectBytes = Object.values(metrics.numaInterconnectTrafficBytesTotalByNode)
+    .reduce((acc, current) => acc + (Number(current) || 0), 0);
+  const qpiTotalTrafficGiB = totalInterconnectBytes / (1024 ** 3);
 
-  const qpiAlert = metrics.numaMiss >= 12 || qpiCrossTrafficGbps >= 20;
+  const qpiAlert = metrics.numaMiss >= 12;
   const qpiStroke = qpiAlert ? '#dc2626' : '#14b8a6';
 
-  const safeMetric = (val: number | null | undefined): string => {
-    const parsed = formatMetric(val);
-    return parsed === '-' ? '' : parsed;
-  };
-
-  const node0RamUsedText = safeMetric(node0Ram.used) || 'N/A';
-  const node0RamTotalText = safeMetric(node0Ram.total) || 'N/A';
-  const node1RamUsedText = safeMetric(node1Ram.used) || 'N/A';
-  const node1RamTotalText = safeMetric(node1Ram.total) || 'N/A';
+  const node0RamUsedText = formatBytesToGiB(node0Ram.used);
+  const node0RamTotalText = formatBytesToGiB(node0Ram.total);
+  const node1RamUsedText = formatBytesToGiB(node1Ram.used);
+  const node1RamTotalText = formatBytesToGiB(node1Ram.total);
 
   const socketY = 56;
   const socketHeight = 260;
@@ -83,7 +92,7 @@ export function VisualNumaTopology({ metrics }: Props) {
           />
         </div>
         <div className="font-mono text-white text-sm">
-          QPI Bandwidth: {formatMetric(qpiCrossTrafficGbps)}
+          QPI Traffic Total: {formatMetric(qpiTotalTrafficGiB)} GiB
         </div>
       </div>
 
@@ -187,7 +196,7 @@ export function VisualNumaTopology({ metrics }: Props) {
             textAnchor="middle"
             className="font-sans text-xs uppercase tracking-widest"
           >
-            QPI BW: {formatMetric(qpiCrossTrafficGbps)} GB/s
+            QPI TOTAL: {formatMetric(qpiTotalTrafficGiB)} GiB
           </text>
           <text
             x={(qpiStartX + qpiEndX) / 2}
@@ -203,7 +212,7 @@ export function VisualNumaTopology({ metrics }: Props) {
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <div className="font-mono text-xs text-slate-400">
-          RAM Used (Node0/Node1): {ramReady && node0RamReady && node1RamReady ? `${node0RamUsedText}% / ${node1RamUsedText}%` : 'N/A (Awaiting PMU)'}
+          RAM Used (Node0/Node1): {node0RamReady && node1RamReady ? `${node0RamUsedText} / ${node1RamUsedText}` : 'N/A (Awaiting NUMA meminfo)'}
         </div>
         <div className="font-mono text-xs text-white">
           QPI STATUS: {qpiAlert ? 'ALERT' : 'HEALTHY'}

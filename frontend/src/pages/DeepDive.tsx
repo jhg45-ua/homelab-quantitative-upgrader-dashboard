@@ -45,7 +45,7 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
               </div>
             }
           />
-           <div className="flex-1 bg-[#0F172A]/30 border border-slate-800/50">
+           <div className="flex-1 bg-[#0F172A]/20">
              <RooflineChart 
                 ips={metrics.ips} 
                 cacheMiss={metrics.cacheMiss} 

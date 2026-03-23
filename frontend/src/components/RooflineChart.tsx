@@ -55,16 +55,8 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
   const yTicks = getLogTickValues(yMin, yMax);
 
   return (
-    <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
-      <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
-        <h3 className="text-[10px] md:text-xs font-semibold tracking-widest text-slate-300 uppercase">Architecture Roofline</h3>
-        <div className="flex gap-3 items-center">
-          <span className="flex items-center gap-1 text-[8px] font-mono"><span className="w-3 h-0.5 bg-[#0ea5e9] inline-block"></span><span className="text-slate-500">MEM BW</span></span>
-          <span className="flex items-center gap-1 text-[8px] font-mono"><span className="w-3 h-0.5 bg-[#ef4444] inline-block"></span><span className="text-slate-500">COMPUTE</span></span>
-          <span className="text-[8px] md:text-[9px] font-mono text-[#ef4444] border border-[#ef4444]/50 px-1 rounded-sm bg-red-500/10">BOUNDARY</span>
-        </div>
-      </div>
-      <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
+    <div className="h-full w-full">
+      <div className="h-full w-full">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="Architecture roofline log-log chart">
           <defs>
             <clipPath id="roofline-plot-clip">

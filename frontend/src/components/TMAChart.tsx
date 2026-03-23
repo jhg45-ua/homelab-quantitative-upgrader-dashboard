@@ -61,25 +61,8 @@ export function TMAChart({ metrics }: Props) {
   const coreLabel = Math.min(100, safeCore);
 
   return (
-    <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
-      <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
-        <h3 className="text-[10px] md:text-xs font-semibold tracking-widest text-slate-300 uppercase">TMA Pipeline Breakdown</h3>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <span className="flex items-center gap-1 text-[8px] font-mono text-slate-400">
-            <span className="inline-block w-2 h-2 bg-green-500"></span>Retiring
-          </span>
-          <span className="flex items-center gap-1 text-[8px] font-mono text-slate-400">
-            <span className="inline-block w-2 h-2 bg-orange-500"></span>Bad Speculation
-          </span>
-          <span className="flex items-center gap-1 text-[8px] font-mono text-slate-400">
-            <span className="inline-block w-2 h-2 bg-blue-500"></span>Front-End
-          </span>
-          <span className="flex items-center gap-1 text-[8px] font-mono text-slate-400">
-            <span className="inline-block w-2 h-2 bg-red-500"></span>Back-End
-          </span>
-        </div>
-      </div>
-      <div className="p-3 flex-1 w-full h-full bg-[#0F172A]/50">
+    <div className="h-full w-full">
+      <div className="h-full w-full">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="Top-down microarchitecture analysis">
           <defs>
             <clipPath id="tma-l2-clip">

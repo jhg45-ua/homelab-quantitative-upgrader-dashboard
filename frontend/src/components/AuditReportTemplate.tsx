@@ -76,6 +76,56 @@ export function AuditReportTemplate({ metrics, systemConfig, appVersion }: Audit
   const tmaFrontEndPct = tmaTotal > 0 ? (metrics.tmaFrontEnd / tmaTotal) * 100 : 25;
   const tmaBackEndPct = Math.max(0, 100 - tmaRetiringPct - tmaBadSpecPct - tmaFrontEndPct);
 
+  const sectionTitleStyle = {
+    backgroundColor: '#0f172a',
+    color: '#ffffff',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    fontSize: '14px',
+    padding: '8px',
+    marginBottom: '16px',
+  };
+
+  const tableStyle = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '14px',
+    color: '#0f172a',
+  };
+
+  const tableHeaderCellStyle = {
+    textAlign: 'left',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    fontSize: '12px',
+    color: '#334155',
+    padding: '8px 6px',
+  };
+
+  const dataCellStyle = {
+    padding: '8px 6px',
+    borderBottom: '1px solid #e2e8f0',
+  };
+
+  const numericCellStyle = {
+    ...dataCellStyle,
+    fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
+    fontSize: '14px',
+    color: '#0f172a',
+    fontWeight: 500,
+  };
+
+  const diagnosticStyle = {
+    marginTop: '16px',
+    padding: '16px',
+    borderLeft: '4px solid #1e293b',
+    backgroundColor: '#f1f5f9',
+    fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
+    fontSize: '12px',
+    lineHeight: 1.6,
+    color: '#0f172a',
+  };
+
   return (
     <div
       id="hqud-pdf-report"
@@ -88,205 +138,235 @@ export function AuditReportTemplate({ metrics, systemConfig, appVersion }: Audit
         width: 'max-content',
       }}
     >
-      <div id="report-page-1" className="pdf-page bg-white w-[210mm] h-[297mm] p-12 overflow-hidden relative box-border">
-        <header className="border-b-4 border-slate-900 pb-4 mb-6">
-          <h1 className="font-black text-3xl tracking-tight text-slate-900 uppercase">HARDWARE QUANTITATIVE UPGRADER DASHBOARD</h1>
-          <p className="mt-2 text-xs text-slate-600 font-mono uppercase tracking-widest">Version {appVersion} // {timestamp}</p>
+      <div
+        id="report-page-1"
+        className="pdf-page bg-white w-[210mm] h-[297mm] p-12 overflow-hidden relative box-border"
+        style={{
+          width: '210mm',
+          height: '297mm',
+          padding: '48px',
+          overflow: 'hidden',
+          position: 'relative',
+          boxSizing: 'border-box',
+          backgroundColor: '#ffffff',
+          color: '#0f172a',
+        }}
+      >
+        <header style={{ borderBottom: '4px solid #0f172a', paddingBottom: '16px', marginBottom: '24px' }}>
+          <h1 style={{ fontWeight: 900, fontSize: '30px', letterSpacing: '-0.02em', color: '#0f172a', textTransform: 'uppercase' }}>HARDWARE QUANTITATIVE UPGRADER DASHBOARD</h1>
+          <p style={{ marginTop: '8px', fontSize: '12px', color: '#475569', fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Version {appVersion} // {timestamp}
+          </p>
 
-          <div className="grid grid-cols-3 gap-4 mt-6 text-sm">
-            <div className="border border-slate-300 bg-slate-50 p-3">
-              <div className="font-bold text-xs uppercase text-slate-500">Node Target</div>
-              <div className="font-mono text-slate-900 mt-1">{nodeTarget}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginTop: '24px', fontSize: '14px' }}>
+            <div style={{ border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '12px' }}>
+              <div style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: '#64748b' }}>Node Target</div>
+              <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', color: '#0f172a', marginTop: '4px' }}>{nodeTarget}</div>
             </div>
-            <div className="border border-slate-300 bg-slate-50 p-3">
-              <div className="font-bold text-xs uppercase text-slate-500">Hardware</div>
-              <div className="font-mono text-slate-900 mt-1">{hardware}</div>
+            <div style={{ border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '12px' }}>
+              <div style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: '#64748b' }}>Hardware</div>
+              <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', color: '#0f172a', marginTop: '4px' }}>{hardware}</div>
             </div>
-            <div className="border border-slate-300 bg-slate-50 p-3">
-              <div className="font-bold text-xs uppercase text-slate-500">Uptime</div>
-              <div className="font-mono text-slate-900 mt-1">{formatUptime(metrics.uptimeSeconds)}</div>
+            <div style={{ border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '12px' }}>
+              <div style={{ fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', color: '#64748b' }}>Uptime</div>
+              <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', color: '#0f172a', marginTop: '4px' }}>{formatUptime(metrics.uptimeSeconds)}</div>
             </div>
           </div>
         </header>
 
         <section>
-          <h2 className="bg-slate-900 text-white font-bold uppercase text-sm p-2 mb-4">Section 1: CPU &amp; TMA</h2>
-          <table className="w-full text-sm">
-            <thead className="border-b-2 border-slate-900 text-left font-bold text-xs uppercase text-slate-700">
+          <h2 style={sectionTitleStyle}>Section 1: CPU &amp; TMA</h2>
+          <table style={tableStyle}>
+            <thead style={{ borderBottom: '2px solid #0f172a' }}>
               <tr>
-                <th className="py-2 pr-2">Metric</th>
-                <th className="py-2 px-2">Value</th>
-                <th className="py-2 pl-2">Unit</th>
-                <th className="py-2 pl-2">Notes</th>
+                <th style={tableHeaderCellStyle}>Metric</th>
+                <th style={tableHeaderCellStyle}>Value</th>
+                <th style={tableHeaderCellStyle}>Unit</th>
+                <th style={tableHeaderCellStyle}>Notes</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">CPI</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.cpi)}</td>
-                <td className="py-2 pl-2">cycles/instr</td>
-                <td className="py-2 pl-2">Ideal: &lt;1.0</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>CPI</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.cpi)}</td>
+                <td style={dataCellStyle}>cycles/instr</td>
+                <td style={dataCellStyle}>Ideal: &lt;1.0</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">CPU Efficiency</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.ipsPerW)}</td>
-                <td className="py-2 pl-2">M IPS/W</td>
-                <td className="py-2 pl-2">Instructions per watt</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>CPU Efficiency</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.ipsPerW)}</td>
+                <td style={dataCellStyle}>M IPS/W</td>
+                <td style={dataCellStyle}>Instructions per watt</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Retiring</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.tmaRetiring)}</td>
-                <td className="py-2 pl-2">%</td>
-                <td className="py-2 pl-2">Useful work completed</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>Retiring</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.tmaRetiring)}</td>
+                <td style={dataCellStyle}>%</td>
+                <td style={dataCellStyle}>Useful work completed</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Bad Speculation</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.tmaBadSpec)}</td>
-                <td className="py-2 pl-2">%</td>
-                <td className="py-2 pl-2">Branch mispredict / machine clears</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>Bad Speculation</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.tmaBadSpec)}</td>
+                <td style={dataCellStyle}>%</td>
+                <td style={dataCellStyle}>Branch mispredict / machine clears</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Front-End Bound</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.tmaFrontEnd)}</td>
-                <td className="py-2 pl-2">%</td>
-                <td className="py-2 pl-2">Decode / fetch stalls</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>Front-End Bound</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.tmaFrontEnd)}</td>
+                <td style={dataCellStyle}>%</td>
+                <td style={dataCellStyle}>Decode / fetch stalls</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Back-End Bound</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.tmaBackEnd)}</td>
-                <td className="py-2 pl-2">%</td>
-                <td className="py-2 pl-2">Execution and memory stalls</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>Back-End Bound</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.tmaBackEnd)}</td>
+                <td style={dataCellStyle}>%</td>
+                <td style={dataCellStyle}>Execution and memory stalls</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Memory Bound</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.memBound)}</td>
-                <td className="py-2 pl-2">%</td>
-                <td className="py-2 pl-2">DRAM / cache latency pressure</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>Memory Bound</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.memBound)}</td>
+                <td style={dataCellStyle}>%</td>
+                <td style={dataCellStyle}>DRAM / cache latency pressure</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Core Bound</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.coreBound)}</td>
-                <td className="py-2 pl-2">%</td>
-                <td className="py-2 pl-2">Execution port/resource pressure</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>Core Bound</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.coreBound)}</td>
+                <td style={dataCellStyle}>%</td>
+                <td style={dataCellStyle}>Execution port/resource pressure</td>
               </tr>
             </tbody>
           </table>
 
-          <div className="mt-4">
-            <div className="flex h-6 w-full rounded border border-slate-800 overflow-hidden mb-2">
+          <div style={{ marginTop: '16px' }}>
+            <div className="flex h-6 w-full rounded border border-slate-800 overflow-hidden mb-2" style={{ display: 'flex', height: '24px', width: '100%', borderRadius: '4px', border: '1px solid #1e293b', overflow: 'hidden', marginBottom: '8px' }}>
               <div style={{ width: `${tmaRetiringPct}%`, backgroundColor: '#22c55e' }} />
               <div style={{ width: `${tmaBadSpecPct}%`, backgroundColor: '#f59e0b' }} />
               <div style={{ width: `${tmaFrontEndPct}%`, backgroundColor: '#3b82f6' }} />
               <div style={{ width: `${tmaBackEndPct}%`, backgroundColor: '#ef4444' }} />
             </div>
-            <div className="text-xs font-mono text-slate-700">
+            <div style={{ fontSize: '12px', fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', color: '#334155' }}>
               Retiring {formatMetric(tmaRetiringPct)}% | Bad Spec {formatMetric(tmaBadSpecPct)}% | Front-End {formatMetric(tmaFrontEndPct)}% | Back-End {formatMetric(tmaBackEndPct)}%
             </div>
           </div>
 
-          <div className="mt-4 p-4 border-l-4 border-slate-800 bg-slate-100 font-mono text-xs leading-relaxed">
-            <span className="font-bold uppercase text-slate-900">&gt; DIAGNOSTIC OUTPUT:</span> {getCpuTmaConclusion(metrics.coreBound, metrics.memBound)}
+          <div style={diagnosticStyle}>
+            <span style={{ fontWeight: 700, textTransform: 'uppercase', color: '#0f172a' }}>&gt; DIAGNOSTIC OUTPUT:</span> {getCpuTmaConclusion(metrics.coreBound, metrics.memBound)}
           </div>
         </section>
       </div>
 
-      <div id="report-page-2" className="pdf-page bg-white w-[210mm] h-[297mm] p-12 overflow-hidden relative box-border">
-        <header className="border-b-4 border-slate-900 pb-4 mb-6">
-          <h1 className="font-black text-3xl tracking-tight text-slate-900 uppercase">HARDWARE QUANTITATIVE UPGRADER DASHBOARD</h1>
-          <p className="mt-2 text-xs text-slate-600 font-mono uppercase tracking-widest">Section Continuation // {timestamp}</p>
+      <div
+        id="report-page-2"
+        className="pdf-page bg-white w-[210mm] h-[297mm] p-12 overflow-hidden relative box-border"
+        style={{
+          width: '210mm',
+          height: '297mm',
+          padding: '48px',
+          overflow: 'hidden',
+          position: 'relative',
+          boxSizing: 'border-box',
+          backgroundColor: '#ffffff',
+          color: '#0f172a',
+        }}
+      >
+        <header style={{ borderBottom: '4px solid #0f172a', paddingBottom: '16px', marginBottom: '24px' }}>
+          <h1 style={{ fontWeight: 900, fontSize: '30px', letterSpacing: '-0.02em', color: '#0f172a', textTransform: 'uppercase' }}>HARDWARE QUANTITATIVE UPGRADER DASHBOARD</h1>
+          <p style={{ marginTop: '8px', fontSize: '12px', color: '#475569', fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Section Continuation // {timestamp}
+          </p>
         </header>
 
-        <section className="mb-8">
-          <h2 className="bg-slate-900 text-white font-bold uppercase text-sm p-2 mb-4">Section 2: NUMA &amp; Memory Hierarchy</h2>
-          <table className="w-full text-sm">
-            <thead className="border-b-2 border-slate-900 text-left font-bold text-xs uppercase text-slate-700">
+        <section style={{ marginBottom: '32px' }}>
+          <h2 style={sectionTitleStyle}>Section 2: NUMA &amp; Memory Hierarchy</h2>
+          <table style={tableStyle}>
+            <thead style={{ borderBottom: '2px solid #0f172a' }}>
               <tr>
-                <th className="py-2 pr-2">Metric</th>
-                <th className="py-2 px-2">Value</th>
-                <th className="py-2 pl-2">Unit</th>
-                <th className="py-2 pl-2">Notes</th>
+                <th style={tableHeaderCellStyle}>Metric</th>
+                <th style={tableHeaderCellStyle}>Value</th>
+                <th style={tableHeaderCellStyle}>Unit</th>
+                <th style={tableHeaderCellStyle}>Notes</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">AMAT</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.amat)}</td>
-                <td className="py-2 pl-2">cycles</td>
-                <td className="py-2 pl-2">Average memory access time</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>AMAT</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.amat)}</td>
+                <td style={dataCellStyle}>cycles</td>
+                <td style={dataCellStyle}>Average memory access time</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">NUMA Miss Rate</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.numaMiss)}</td>
-                <td className="py-2 pl-2">%</td>
-                <td className="py-2 pl-2">Cross-node fetches</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>NUMA Miss Rate</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.numaMiss)}</td>
+                <td style={dataCellStyle}>%</td>
+                <td style={dataCellStyle}>Cross-node fetches</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">RAM Node 0</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(bytesToGiB(ramNode0Bytes))}</td>
-                <td className="py-2 pl-2">GiB</td>
-                <td className="py-2 pl-2">NUMA node 0 memory usage</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>RAM Node 0</td>
+                <td style={numericCellStyle}>{formatMetric(bytesToGiB(ramNode0Bytes))}</td>
+                <td style={dataCellStyle}>GiB</td>
+                <td style={dataCellStyle}>NUMA node 0 memory usage</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">RAM Node 1</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(bytesToGiB(ramNode1Bytes))}</td>
-                <td className="py-2 pl-2">GiB</td>
-                <td className="py-2 pl-2">NUMA node 1 memory usage</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>RAM Node 1</td>
+                <td style={numericCellStyle}>{formatMetric(bytesToGiB(ramNode1Bytes))}</td>
+                <td style={dataCellStyle}>GiB</td>
+                <td style={dataCellStyle}>NUMA node 1 memory usage</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">QPI Traffic</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(qpiTrafficMiB)}</td>
-                <td className="py-2 pl-2">MiB</td>
-                <td className="py-2 pl-2">Inter-socket data movement</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>QPI Traffic</td>
+                <td style={numericCellStyle}>{formatMetric(qpiTrafficMiB)}</td>
+                <td style={dataCellStyle}>MiB</td>
+                <td style={dataCellStyle}>Inter-socket data movement</td>
               </tr>
             </tbody>
           </table>
 
-          <div className="mt-4 p-4 border-l-4 border-slate-800 bg-slate-100 font-mono text-xs leading-relaxed">
-            <span className="font-bold uppercase text-slate-900">&gt; DIAGNOSTIC OUTPUT:</span> {getNumaConclusion(metrics.numaMiss, qpiTrafficMiB)}
+          <div style={diagnosticStyle}>
+            <span style={{ fontWeight: 700, textTransform: 'uppercase', color: '#0f172a' }}>&gt; DIAGNOSTIC OUTPUT:</span> {getNumaConclusion(metrics.numaMiss, qpiTrafficMiB)}
           </div>
         </section>
 
         <section>
-          <h2 className="bg-slate-900 text-white font-bold uppercase text-sm p-2 mb-4">Section 3: Storage I/O &amp; Network</h2>
-          <table className="w-full text-sm">
-            <thead className="border-b-2 border-slate-900 text-left font-bold text-xs uppercase text-slate-700">
+          <h2 style={sectionTitleStyle}>Section 3: Storage I/O &amp; Network</h2>
+          <table style={tableStyle}>
+            <thead style={{ borderBottom: '2px solid #0f172a' }}>
               <tr>
-                <th className="py-2 pr-2">Metric</th>
-                <th className="py-2 px-2">Value</th>
-                <th className="py-2 pl-2">Unit</th>
-                <th className="py-2 pl-2">Notes</th>
+                <th style={tableHeaderCellStyle}>Metric</th>
+                <th style={tableHeaderCellStyle}>Value</th>
+                <th style={tableHeaderCellStyle}>Unit</th>
+                <th style={tableHeaderCellStyle}>Notes</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Queue Depth</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.queueDepth)}</td>
-                <td className="py-2 pl-2">reqs</td>
-                <td className="py-2 pl-2">In-flight block queue requests</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>Queue Depth</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.queueDepth)}</td>
+                <td style={dataCellStyle}>reqs</td>
+                <td style={dataCellStyle}>In-flight block queue requests</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">IOPS</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.iops)}</td>
-                <td className="py-2 pl-2">ops/s</td>
-                <td className="py-2 pl-2">Storage completion throughput</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>IOPS</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.iops)}</td>
+                <td style={dataCellStyle}>ops/s</td>
+                <td style={dataCellStyle}>Storage completion throughput</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">Latency Inferred</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(inferredLatencyMs)}</td>
-                <td className="py-2 pl-2">ms</td>
-                <td className="py-2 pl-2">Little's Law estimate W = L / λ</td>
+              <tr style={{ backgroundColor: '#ffffff' }}>
+                <td style={dataCellStyle}>Latency Inferred</td>
+                <td style={numericCellStyle}>{formatMetric(inferredLatencyMs)}</td>
+                <td style={dataCellStyle}>ms</td>
+                <td style={dataCellStyle}>Little's Law estimate W = L / λ</td>
               </tr>
-              <tr className="border-b border-slate-200 even:bg-slate-50">
-                <td className="py-2 pr-2">TCP Retransmits</td>
-                <td className="py-2 px-2 font-mono text-sm text-slate-900 font-medium">{formatMetric(metrics.tcpRetrans)}</td>
-                <td className="py-2 pl-2">/s</td>
-                <td className="py-2 pl-2">Network packet loss indicator</td>
+              <tr style={{ backgroundColor: '#f8fafc' }}>
+                <td style={dataCellStyle}>TCP Retransmits</td>
+                <td style={numericCellStyle}>{formatMetric(metrics.tcpRetrans)}</td>
+                <td style={dataCellStyle}>/s</td>
+                <td style={dataCellStyle}>Network packet loss indicator</td>
               </tr>
             </tbody>
           </table>
 
-          <div className="mt-4 p-4 border-l-4 border-slate-800 bg-slate-100 font-mono text-xs leading-relaxed">
-            <span className="font-bold uppercase text-slate-900">&gt; DIAGNOSTIC OUTPUT:</span> {getIoNetworkConclusion(inferredLatencyMs, metrics.tcpRetrans)}
+          <div style={diagnosticStyle}>
+            <span style={{ fontWeight: 700, textTransform: 'uppercase', color: '#0f172a' }}>&gt; DIAGNOSTIC OUTPUT:</span> {getIoNetworkConclusion(inferredLatencyMs, metrics.tcpRetrans)}
           </div>
         </section>
       </div>

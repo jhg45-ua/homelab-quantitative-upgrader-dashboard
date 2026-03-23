@@ -9,9 +9,9 @@ interface Props {
 }
 
 export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 102.4 }: Props) {
-  const width = 960;
+  const width = 1040;
   const height = 360;
-  const margin = { top: 24, right: 24, bottom: 56, left: 74 };
+  const margin = { top: 24, right: 12, bottom: 56, left: 52 };
   const plotLeft = margin.left;
   const plotRight = width - margin.right;
   const plotTop = margin.top;

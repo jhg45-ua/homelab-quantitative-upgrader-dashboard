@@ -71,98 +71,121 @@ export function AuditReportTemplate({ metrics, systemConfig, appVersion }: Audit
   const inferredLatencyMs = metrics.iops > 0 ? (metrics.queueDepth / metrics.iops) * 1000 : 0;
 
   return (
-    <div id="hqud-pdf-report" className="absolute -left-[9999px] w-[210mm] min-h-[297mm] bg-white text-slate-900 p-10 font-sans">
-      <header className="border-b-2 border-slate-300 pb-6 mb-8">
-        <h1 className="text-2xl font-black tracking-tight uppercase">HARDWARE QUANTITATIVE UPGRADER DASHBOARD</h1>
-        <div className="mt-2 text-xs text-slate-600 font-mono uppercase tracking-wide">
+    <div
+      id="hqud-pdf-report"
+      style={{
+        position: 'fixed',
+        left: '-100000px',
+        top: 0,
+        width: '210mm',
+        minHeight: '297mm',
+        backgroundColor: '#ffffff',
+        color: '#0f172a',
+        padding: '40px',
+        fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif',
+        boxSizing: 'border-box',
+      }}
+    >
+      <header style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '24px', marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '-0.03em', margin: 0 }}>HARDWARE QUANTITATIVE UPGRADER DASHBOARD</h1>
+        <div
+          style={{
+            marginTop: '8px',
+            fontSize: '12px',
+            color: '#475569',
+            fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}
+        >
           <span>Version {appVersion}</span>
-          <span className="mx-2">|</span>
+          <span style={{ margin: '0 8px' }}>|</span>
           <span>{timestamp}</span>
         </div>
-        <div className="mt-5 grid grid-cols-3 gap-3 text-xs">
-          <div className="border border-slate-300 bg-slate-50 p-3">
-            <div className="text-slate-500 uppercase text-[10px] tracking-wide">Node Target</div>
-            <div className="font-mono font-semibold mt-1">{nodeTarget}</div>
+        <div style={{ marginTop: '18px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', fontSize: '12px' }}>
+          <div style={{ border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '12px' }}>
+            <div style={{ color: '#64748b', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.05em' }}>Node Target</div>
+            <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', fontWeight: 600, marginTop: '4px' }}>{nodeTarget}</div>
           </div>
-          <div className="border border-slate-300 bg-slate-50 p-3">
-            <div className="text-slate-500 uppercase text-[10px] tracking-wide">Hardware</div>
-            <div className="font-mono font-semibold mt-1">{hardware}</div>
+          <div style={{ border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '12px' }}>
+            <div style={{ color: '#64748b', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.05em' }}>Hardware</div>
+            <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', fontWeight: 600, marginTop: '4px' }}>{hardware}</div>
           </div>
-          <div className="border border-slate-300 bg-slate-50 p-3">
-            <div className="text-slate-500 uppercase text-[10px] tracking-wide">Uptime</div>
-            <div className="font-mono font-semibold mt-1">{formatUptime(metrics.uptimeSeconds)}</div>
+          <div style={{ border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '12px' }}>
+            <div style={{ color: '#64748b', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.05em' }}>Uptime</div>
+            <div style={{ fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', fontWeight: 600, marginTop: '4px' }}>{formatUptime(metrics.uptimeSeconds)}</div>
           </div>
         </div>
       </header>
 
-      <section className="mb-7">
-        <h2 className="text-sm font-black tracking-wider uppercase mb-3">Section 1: CPU &amp; TMA</h2>
-        <table className="w-full border-collapse border border-slate-300 text-xs font-mono">
-          <thead className="bg-slate-100">
+      <section style={{ marginBottom: '28px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px' }}>Section 1: CPU &amp; TMA</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1', fontSize: '12px', fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
-              <th className="text-left border border-slate-300 px-3 py-2">Metric</th>
-              <th className="text-left border border-slate-300 px-3 py-2">Value</th>
-              <th className="text-left border border-slate-300 px-3 py-2">Unit</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Metric</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Value</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Unit</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td className="border border-slate-300 px-3 py-2">CPI</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.cpi)}</td><td className="border border-slate-300 px-3 py-2">cycles/instr</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Efficiency (IPS/W)</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.ipsPerW)}</td><td className="border border-slate-300 px-3 py-2">IPS/W</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Retiring</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.tmaRetiring)}</td><td className="border border-slate-300 px-3 py-2">%</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Bad Speculation</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.tmaBadSpec)}</td><td className="border border-slate-300 px-3 py-2">%</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Front-End Bound</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.tmaFrontEnd)}</td><td className="border border-slate-300 px-3 py-2">%</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Back-End Bound</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.tmaBackEnd)}</td><td className="border border-slate-300 px-3 py-2">%</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Memory Bound</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.memBound)}</td><td className="border border-slate-300 px-3 py-2">%</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Core Bound</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.coreBound)}</td><td className="border border-slate-300 px-3 py-2">%</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>CPI</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.cpi)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>cycles/instr</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Efficiency (IPS/W)</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.ipsPerW)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>IPS/W</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Retiring</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.tmaRetiring)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>%</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Bad Speculation</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.tmaBadSpec)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>%</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Front-End Bound</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.tmaFrontEnd)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>%</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Back-End Bound</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.tmaBackEnd)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>%</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Memory Bound</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.memBound)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>%</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Core Bound</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.coreBound)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>%</td></tr>
           </tbody>
         </table>
-        <p className="mt-3 border border-slate-300 bg-slate-50 px-3 py-2 text-xs">
-          <span className="font-semibold">Conclusion:</span> {getCpuTmaConclusion(metrics.coreBound, metrics.memBound)}
+        <p style={{ marginTop: '10px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '8px 12px', fontSize: '12px' }}>
+          <span style={{ fontWeight: 700 }}>Conclusion:</span> {getCpuTmaConclusion(metrics.coreBound, metrics.memBound)}
         </p>
       </section>
 
-      <section className="mb-7">
-        <h2 className="text-sm font-black tracking-wider uppercase mb-3">Section 2: NUMA &amp; Jerarquia de Memoria</h2>
-        <table className="w-full border-collapse border border-slate-300 text-xs font-mono">
-          <thead className="bg-slate-100">
+      <section style={{ marginBottom: '28px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px' }}>Section 2: NUMA &amp; Jerarquia de Memoria</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1', fontSize: '12px', fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
-              <th className="text-left border border-slate-300 px-3 py-2">Metric</th>
-              <th className="text-left border border-slate-300 px-3 py-2">Value</th>
-              <th className="text-left border border-slate-300 px-3 py-2">Unit</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Metric</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Value</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Unit</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td className="border border-slate-300 px-3 py-2">AMAT</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.amat)}</td><td className="border border-slate-300 px-3 py-2">cycles</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">NUMA Miss Rate</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.numaMiss)}</td><td className="border border-slate-300 px-3 py-2">%</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">RAM Node 0</td><td className="border border-slate-300 px-3 py-2">{formatMetric(bytesToGiB(ramNode0Bytes))}</td><td className="border border-slate-300 px-3 py-2">GiB</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">RAM Node 1</td><td className="border border-slate-300 px-3 py-2">{formatMetric(bytesToGiB(ramNode1Bytes))}</td><td className="border border-slate-300 px-3 py-2">GiB</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">QPI Traffic</td><td className="border border-slate-300 px-3 py-2">{formatMetric(qpiTrafficMiB)}</td><td className="border border-slate-300 px-3 py-2">MiB</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>AMAT</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.amat)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>cycles</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>NUMA Miss Rate</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.numaMiss)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>%</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>RAM Node 0</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(bytesToGiB(ramNode0Bytes))}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>GiB</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>RAM Node 1</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(bytesToGiB(ramNode1Bytes))}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>GiB</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>QPI Traffic</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(qpiTrafficMiB)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>MiB</td></tr>
           </tbody>
         </table>
-        <p className="mt-3 border border-slate-300 bg-slate-50 px-3 py-2 text-xs">
-          <span className="font-semibold">Conclusion:</span> {getNumaConclusion(metrics.numaMiss, qpiTrafficMiB)}
+        <p style={{ marginTop: '10px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '8px 12px', fontSize: '12px' }}>
+          <span style={{ fontWeight: 700 }}>Conclusion:</span> {getNumaConclusion(metrics.numaMiss, qpiTrafficMiB)}
         </p>
       </section>
 
       <section>
-        <h2 className="text-sm font-black tracking-wider uppercase mb-3">Section 3: Storage I/O &amp; Network</h2>
-        <table className="w-full border-collapse border border-slate-300 text-xs font-mono">
-          <thead className="bg-slate-100">
+        <h2 style={{ fontSize: '13px', fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '10px' }}>Section 3: Storage I/O &amp; Network</h2>
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #cbd5e1', fontSize: '12px', fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+          <thead style={{ backgroundColor: '#f1f5f9' }}>
             <tr>
-              <th className="text-left border border-slate-300 px-3 py-2">Metric</th>
-              <th className="text-left border border-slate-300 px-3 py-2">Value</th>
-              <th className="text-left border border-slate-300 px-3 py-2">Unit</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Metric</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Value</th>
+              <th style={{ textAlign: 'left', border: '1px solid #cbd5e1', padding: '8px 12px' }}>Unit</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td className="border border-slate-300 px-3 py-2">Queue Depth</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.queueDepth)}</td><td className="border border-slate-300 px-3 py-2">reqs</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">IOPS</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.iops)}</td><td className="border border-slate-300 px-3 py-2">ops/s</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">Latency Inferred</td><td className="border border-slate-300 px-3 py-2">{formatMetric(inferredLatencyMs)}</td><td className="border border-slate-300 px-3 py-2">ms</td></tr>
-            <tr><td className="border border-slate-300 px-3 py-2">TCP Retransmits</td><td className="border border-slate-300 px-3 py-2">{formatMetric(metrics.tcpRetrans)}</td><td className="border border-slate-300 px-3 py-2">/s</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Queue Depth</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.queueDepth)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>reqs</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>IOPS</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.iops)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>ops/s</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>Latency Inferred</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(inferredLatencyMs)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>ms</td></tr>
+            <tr><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>TCP Retransmits</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>{formatMetric(metrics.tcpRetrans)}</td><td style={{ border: '1px solid #cbd5e1', padding: '8px 12px' }}>/s</td></tr>
           </tbody>
         </table>
-        <p className="mt-3 border border-slate-300 bg-slate-50 px-3 py-2 text-xs">
-          <span className="font-semibold">Conclusion:</span> {getIoNetworkConclusion(inferredLatencyMs, metrics.tcpRetrans)}
+        <p style={{ marginTop: '10px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', padding: '8px 12px', fontSize: '12px' }}>
+          <span style={{ fontWeight: 700 }}>Conclusion:</span> {getIoNetworkConclusion(inferredLatencyMs, metrics.tcpRetrans)}
         </p>
       </section>
     </div>

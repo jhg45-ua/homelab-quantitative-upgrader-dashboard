@@ -11,7 +11,7 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.8.0 RC0";
+const APP_VERSION = "v2.8.0 RC1";
 
 export function Overview({ metrics, systemConfig }: Props) {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);

@@ -69,7 +69,7 @@ export function App() {
             <span className="text-[10px] font-mono text-slate-500 font-black uppercase tracking-widest">eBPF Stream Active</span>
           </div>
           <div className="text-[10px] font-mono text-slate-700 font-bold uppercase tracking-widest flex justify-between">
-            <span>Core v2.8.0 RC0</span>
+            <span>Core v2.8.0 RC1</span>
             <span className="text-slate-800">JH-G // R720-A</span>
           </div>
         </div>

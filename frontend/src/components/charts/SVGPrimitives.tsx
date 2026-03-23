@@ -14,7 +14,8 @@ export function HorizontalGrid({ left, right, ticks }: HorizontalGridProps) {
           <line x1={left} x2={right} y1={tick.y} y2={tick.y} stroke="#334155" strokeWidth="1" />
           <text
             x={left - 8}
-            y={tick.y + 3}
+            y={tick.y}
+            dominantBaseline="middle"
             textAnchor="end"
             className="fill-slate-400 font-mono"
             style={{ fontSize: '9px' }}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'preact/hooks';
+import { InfoTooltip } from './UI/InfoTooltip';
 
 const HOST = 'r720-baremetal';
 const EXPECTED_BUCKETS = ['0.1ms', '0.5ms', '1ms', '2ms', '5ms', '10ms', '25ms', '50ms', '100ms', '+Inf'];
@@ -105,7 +106,14 @@ export function Heatmap() {
   return (
     <div className="bg-slate-800/40 border border-slate-700 flex flex-col w-full h-full overflow-hidden backdrop-blur-sm">
       <div className="px-6 py-4 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
-        <h3 className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">eBPF Block I/O Latency</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-[10px] font-black tracking-[0.2em] text-slate-400 uppercase">eBPF Block I/O Latency</h3>
+          <InfoTooltip
+            title="eBPF Block I/O Latency"
+            shortSummary="Heatmap of I/O latency buckets from kernel telemetry. Highlights how often requests land in each latency bucket over the recent window."
+            wikiHash="#ebpf"
+          />
+        </div>
         <span className="text-[9px] font-mono text-teal-400 border border-teal-400/30 px-3 py-1 bg-teal-400/5 font-black uppercase tracking-widest">Kernel Pipeline</span>
       </div>
       

@@ -18,16 +18,6 @@ function clampPct(v: number): number {
   return Math.max(0, Math.min(100, v));
 }
 
-function evaluateBackendStalls(memBound: number, coreBound: number): string {
-  if (memBound > coreBound) {
-    return 'RAM/Cache Bottleneck. Optimize memory access patterns (cache locality) or upgrade RAM speed.';
-  }
-  if (coreBound > memBound) {
-    return 'Execution Unit Bottleneck. Code is compute-heavy. Consider vectorization (AVX) or ILP improvements.';
-  }
-  return 'Balanced Back-End Pressure. Validate both memory hierarchy and execution pipeline with targeted profiling.';
-}
-
 export function TMAChart({ metrics }: Props) {
   const total = metrics.tmaRetiring + metrics.tmaBadSpec + metrics.tmaFrontEnd + metrics.tmaBackEnd;
   const norm = (v: number) => total > 0 ? clampPct((v / total) * 100) : 25;
@@ -39,20 +29,19 @@ export function TMAChart({ metrics }: Props) {
 
   const safeMem = Math.max(0, Number(metrics.memBound) || 0);
   const safeCore = Math.max(0, Number(metrics.coreBound) || 0);
-  const level2Total = safeMem + safeCore || 1;
-  const memRelativePct = (safeMem / level2Total) * 100;
-  const coreRelativePct = (safeCore / level2Total) * 100;
-
-  const recommendation = evaluateBackendStalls(safeMem, safeCore);
+  const hasL2Data = safeMem + safeCore > 0;
+  const level2Total = hasL2Data ? safeMem + safeCore : 1;
+  const memRelativePct = hasL2Data ? (safeMem / level2Total) * 100 : 50;
+  const coreRelativePct = hasL2Data ? (safeCore / level2Total) * 100 : 50;
 
   const width = 980;
-  const height = 240;
+  const height = 260;
   const mainX = 20;
-  const mainY = 36;
+  const mainY = 44;
   const mainW = 940;
-  const mainH = 56;
-  const subY = 116;
-  const subH = 34;
+  const mainH = 66;
+  const subY = 140;
+  const subH = 36;
 
   const rW = (mainW * rPct) / 100;
   const bsW = (mainW * bsPct) / 100;
@@ -64,8 +53,10 @@ export function TMAChart({ metrics }: Props) {
   const feX = bsX + bsW;
   const beX = feX + feW;
 
-  const memW = beW * (memRelativePct / 100);
-  const coreW = beW * (coreRelativePct / 100);
+  const l2W = Math.max(140, Math.min(260, beW));
+  const l2X = Math.max(mainX, Math.min(width - 20 - l2W, beX + (beW - l2W) / 2));
+  const memW = l2W * (memRelativePct / 100);
+  const coreW = l2W * (coreRelativePct / 100);
   const memLabel = Math.min(100, safeMem);
   const coreLabel = Math.min(100, safeCore);
 
@@ -90,63 +81,87 @@ export function TMAChart({ metrics }: Props) {
       </div>
       <div className="p-3 flex-1 w-full h-full bg-[#0F172A]/50">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="Top-down microarchitecture analysis">
-          <rect x={mainX} y={mainY} width={mainW} height={mainH} rx={8} fill="#1e293b" stroke="#334155" strokeWidth={1} />
+          <defs>
+            <clipPath id="tma-l2-clip">
+              <rect x={l2X} y={subY - 18} width={l2W} height={subH + 22} />
+            </clipPath>
+            <clipPath id="tma-main-bar-clip">
+              <rect x={mainX} y={mainY} width={mainW} height={mainH} rx={4} />
+            </clipPath>
+            <clipPath id="tma-l2-bar-clip">
+              <rect x={l2X} y={subY} width={l2W} height={subH} rx={4} />
+            </clipPath>
+          </defs>
 
-          <rect x={rX} y={mainY} width={rW} height={mainH} rx={8} fill="#22c55e">
-            <title>Retiring: {formatMetric(rPct)}%</title>
-          </rect>
-          <rect x={bsX} y={mainY} width={bsW} height={mainH} fill="#f97316">
-            <title>Bad Speculation: {formatMetric(bsPct)}%</title>
-          </rect>
-          <rect x={feX} y={mainY} width={feW} height={mainH} fill="#3b82f6">
-            <title>Front-End Bound: {formatMetric(fePct)}%</title>
-          </rect>
-          <rect x={beX} y={mainY} width={beW} height={mainH} rx={8} fill="#ef4444">
-            <title>Back-End Bound: {formatMetric(bePct)}%</title>
-          </rect>
+          <rect x={mainX} y={mainY} width={mainW} height={mainH} rx={4} fill="#1e293b" stroke="#334155" strokeWidth={1} />
 
-          <text x={rX + rW / 2} y={mainY + 34} textAnchor="middle" className="font-mono text-white text-xs">
+          <g clipPath="url(#tma-main-bar-clip)">
+            <rect x={rX} y={mainY} width={rW} height={mainH} fill="#22c55e">
+              <title>Retiring: {formatMetric(rPct)}%</title>
+            </rect>
+            <rect x={bsX} y={mainY} width={bsW} height={mainH} fill="#f97316">
+              <title>Bad Speculation: {formatMetric(bsPct)}%</title>
+            </rect>
+            <rect x={feX} y={mainY} width={feW} height={mainH} fill="#3b82f6">
+              <title>Front-End Bound: {formatMetric(fePct)}%</title>
+            </rect>
+            <rect x={beX} y={mainY} width={beW} height={mainH} fill="#ef4444">
+              <title>Back-End Bound: {formatMetric(bePct)}%</title>
+            </rect>
+          </g>
+
+          <text x={rX + rW / 2} y={mainY + 40} textAnchor="middle" className="font-mono text-white text-xs">
             {formatMetric(rPct)}%
           </text>
           {bsPct > 6 && (
-            <text x={bsX + bsW / 2} y={mainY + 34} textAnchor="middle" className="font-mono text-white text-xs">
+            <text x={bsX + bsW / 2} y={mainY + 40} textAnchor="middle" className="font-mono text-white text-xs">
               {formatMetric(bsPct)}%
             </text>
           )}
           {fePct > 6 && (
-            <text x={feX + feW / 2} y={mainY + 34} textAnchor="middle" className="font-mono text-white text-xs">
+            <text x={feX + feW / 2} y={mainY + 40} textAnchor="middle" className="font-mono text-white text-xs">
               {formatMetric(fePct)}%
             </text>
           )}
-          <text x={beX + beW / 2} y={mainY + 34} textAnchor="middle" className="font-mono text-white text-xs">
+          <text x={beX + beW / 2} y={mainY + 40} textAnchor="middle" className="font-mono text-white text-xs">
             {formatMetric(bePct)}%
           </text>
 
-          <text x={beX + beW / 2} y={subY - 10} textAnchor="middle" className="font-sans font-bold text-xs uppercase fill-white tracking-widest">
+          <text x={l2X + l2W / 2} y={subY - 10} textAnchor="middle" className="font-sans font-bold text-xs uppercase fill-white tracking-widest">
             Back-End Bound L2
           </text>
 
-          <rect x={beX} y={subY} width={beW} height={subH} rx={6} fill="#1e293b" stroke="#334155" strokeWidth={1} />
-          <rect x={beX} y={subY} width={memW} height={subH} rx={6} fill="#9F1239">
-            <title>Memory Bound: {formatMetric(memLabel)}%</title>
-          </rect>
-          <rect x={beX + memW} y={subY} width={coreW} height={subH} rx={6} fill="#EF4444">
-            <title>Core Bound: {formatMetric(coreLabel)}%</title>
-          </rect>
+          <rect x={l2X} y={subY} width={l2W} height={subH} rx={4} fill="#1e293b" stroke="#334155" strokeWidth={1} />
+          <g clipPath="url(#tma-l2-bar-clip)">
+            <rect x={l2X} y={subY} width={memW} height={subH} fill={hasL2Data ? '#9F1239' : '#334155'}>
+              <title>Memory Bound: {formatMetric(memLabel)}%</title>
+            </rect>
+            <rect x={l2X + memW} y={subY} width={coreW} height={subH} fill={hasL2Data ? '#EF4444' : '#475569'}>
+              <title>Core Bound: {formatMetric(coreLabel)}%</title>
+            </rect>
+          </g>
 
-          <text x={beX + memW / 2} y={subY + 22} textAnchor="middle" className="font-mono text-white text-xs">
-            MEM {formatMetric(memLabel)}%
-          </text>
-          <text x={beX + memW + coreW / 2} y={subY + 22} textAnchor="middle" className="font-mono text-white text-xs">
-            CORE {formatMetric(coreLabel)}%
-          </text>
+          <g clipPath="url(#tma-l2-clip)">
+            {!hasL2Data ? (
+              <text x={l2X + l2W / 2} y={subY + 24} textAnchor="middle" className="font-mono text-white text-xs">
+                NO L2 DATA
+              </text>
+            ) : (
+              <>
+                {memW > 56 && (
+                  <text x={l2X + memW / 2} y={subY + 24} textAnchor="middle" className="font-mono text-white text-xs">
+                    MEM {formatMetric(memLabel)}%
+                  </text>
+                )}
+                {coreW > 56 && (
+                  <text x={l2X + memW + coreW / 2} y={subY + 24} textAnchor="middle" className="font-mono text-white text-xs">
+                    CORE {formatMetric(coreLabel)}%
+                  </text>
+                )}
+              </>
+            )}
+          </g>
 
-          <text x={mainX} y={subY + 58} className="font-sans font-bold text-xs uppercase fill-teal-300 tracking-widest">
-            Recommendation
-          </text>
-          <text x={mainX} y={subY + 80} className="font-mono fill-white text-xs">
-            {recommendation}
-          </text>
         </svg>
       </div>
     </div>

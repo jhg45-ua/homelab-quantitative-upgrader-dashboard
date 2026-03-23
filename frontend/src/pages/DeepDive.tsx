@@ -21,8 +21,8 @@ interface Props {
 
 export function DeepDive({ metrics, history, systemConfig }: Props) {
   return (
-    <div className="flex flex-col gap-10 animate-in fade-in duration-700">
-      <header className="flex flex-col md:flex-row md:items-baseline justify-between gap-6 px-4">
+    <div className="flex flex-col gap-6 animate-in fade-in duration-700">
+      <header className="flex flex-col md:flex-row md:items-baseline justify-between gap-4 md:gap-6 px-4 md:px-6">
         <div className="flex items-center gap-6">
           <h2 className="text-3xl md:text-5xl font-black tracking-tighter text-slate-100 uppercase">
             Scientific Deep Dive
@@ -32,8 +32,7 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">Renderer: Native SVG // No ECharts</div>
       </header>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-        <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col h-[650px] backdrop-blur-sm shadow-xl relative group">
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-7 flex flex-col h-[560px] backdrop-blur-sm shadow-xl relative group overflow-hidden">
           <PanelHeader
             title="Architecture Roofline"
             shortSummary="Maps operational intensity versus achievable throughput to identify memory-bound versus compute-bound workloads."
@@ -54,26 +53,24 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
                 memBwGbps={systemConfig?.specs.max_mem_bw_gbps} 
              />
            </div>
-        </div>
-
-        <div className="bg-slate-800/40 border border-slate-700/50 flex flex-col h-[650px] backdrop-blur-sm shadow-xl overflow-hidden">
-           <Suspense fallback={
-             <div className="flex items-center justify-center h-full">
-               <div className="text-center">
-                 <div className="inline-block p-4 border border-slate-700 rounded-sm bg-slate-800/50 mb-4">
-                   <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-                 </div>
-                 <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">Loading Heatmap...</p>
-               </div>
-             </div>
-           }>
-             <Heatmap />
-           </Suspense>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col h-[380px] backdrop-blur-sm shadow-xl">
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 flex flex-col h-[560px] backdrop-blur-sm shadow-xl overflow-hidden">
+         <Suspense fallback={
+           <div className="flex items-center justify-center h-full">
+             <div className="text-center">
+               <div className="inline-block p-4 border border-slate-700 rounded-sm bg-slate-800/50 mb-4">
+                 <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+               </div>
+               <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">Loading Heatmap...</p>
+             </div>
+           </div>
+         }>
+           <Heatmap />
+         </Suspense>
+      </div>
+
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-7 flex flex-col h-[460px] backdrop-blur-sm shadow-xl overflow-hidden">
           <PanelHeader
             title="TMA Pipeline Breakdown"
             shortSummary="Top-down slot decomposition of the pipeline to isolate retiring work versus front-end, speculation, and back-end stalls."
@@ -90,34 +87,21 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
           <div className="flex-1">
             <TMAChart metrics={metrics} />
           </div>
-        </div>
-
-        <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col h-[380px] backdrop-blur-sm shadow-xl">
-          <PanelHeader
-            title="Amdahl Lock Contention"
-            shortSummary="Shows serialization pressure from lock contention, highlighting throughput limits predicted by Amdahl's Law."
-            wikiHash="#littles"
-            rightSlot={
-              <span className="text-teal-400 bg-teal-400/5 px-4 py-1.5 border border-teal-500/20 uppercase tracking-widest text-[9px]">Mutex Wait Distribution</span>
-            }
-          />
-          <div className="flex-1">
-            <AmdahlChart history={history} />
-          </div>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        <div className="bg-slate-800/40 border border-slate-700/50 flex flex-col h-[380px] backdrop-blur-sm shadow-xl overflow-hidden">
-          <TimelineChart history={history} />
-        </div>
-
-        <div className="bg-slate-800/40 border border-slate-700/50 flex flex-col h-[380px] backdrop-blur-sm shadow-xl overflow-hidden">
-          <ComboChart history={history} />
-        </div>
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 flex flex-col h-[460px] backdrop-blur-sm shadow-xl overflow-hidden">
+        <AmdahlChart history={history} />
       </div>
 
-      <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-8 flex flex-col h-[460px] backdrop-blur-sm shadow-xl overflow-hidden">
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 flex flex-col h-[460px] backdrop-blur-sm shadow-xl overflow-hidden">
+        <TimelineChart history={history} />
+      </div>
+
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 flex flex-col h-[460px] backdrop-blur-sm shadow-xl overflow-hidden">
+        <ComboChart history={history} />
+      </div>
+
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-7 flex flex-col min-h-[480px] h-auto backdrop-blur-sm shadow-xl overflow-hidden">
         <VisualNumaTopology metrics={metrics} />
       </div>
 
@@ -138,22 +122,22 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
            <span className="text-[10px] font-mono text-slate-600 font-bold tracking-[0.3em] uppercase">L = λ × W</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-800">
-           <div className="p-12 flex flex-col items-center justify-center group overflow-hidden relative">
+            <div className="p-10 md:p-12 flex flex-col items-center justify-center group overflow-hidden relative">
               <div className="absolute inset-0 bg-teal-500/0 group-hover:bg-teal-500/5 transition-colors duration-500"></div>
               <div className="text-[9px] font-mono text-slate-500 uppercase font-black tracking-widest mb-6 border-b border-slate-800 pb-2">Arrival Rate (λ)</div>
-              <div className="text-6xl md:text-7xl font-black text-slate-100 tracking-tighter tabular-nums drop-shadow-md">{formatMetric(metrics.iops)}</div>
+              <div className="text-5xl md:text-6xl font-black text-slate-100 tracking-tighter tabular-nums drop-shadow-md">{formatMetric(metrics.iops)}</div>
               <div className="text-[10px] font-mono text-slate-500 mt-4 font-bold uppercase tracking-widest">IOPS / SEC</div>
            </div>
-           <div className="p-12 flex flex-col items-center justify-center group overflow-hidden relative">
+            <div className="p-10 md:p-12 flex flex-col items-center justify-center group overflow-hidden relative">
               <div className="absolute inset-0 bg-red-500/0 group-hover:bg-red-500/5 transition-colors duration-500"></div>
               <div className="text-[9px] font-mono text-slate-500 uppercase font-black tracking-widest mb-6 border-b border-slate-800 pb-2">Mean Occupancy (L)</div>
-              <div className="text-6xl md:text-7xl font-black text-slate-100 tracking-tighter tabular-nums drop-shadow-md">{formatMetric(metrics.queueDepth)}</div>
+              <div className="text-5xl md:text-6xl font-black text-slate-100 tracking-tighter tabular-nums drop-shadow-md">{formatMetric(metrics.queueDepth)}</div>
               <div className="text-[10px] font-mono text-slate-500 mt-4 font-bold uppercase tracking-widest">In-Flight Reqs</div>
            </div>
-           <div className="p-12 flex flex-col items-center justify-center group overflow-hidden relative">
+            <div className="p-10 md:p-12 flex flex-col items-center justify-center group overflow-hidden relative">
               <div className="absolute inset-0 bg-teal-500/0 group-hover:bg-teal-500/5 transition-colors duration-500"></div>
               <div className="text-[9px] font-mono text-slate-500 uppercase font-black tracking-widest mb-6 border-b border-slate-800 pb-2">Residency (W)</div>
-              <div className="text-6xl md:text-7xl font-black text-teal-400 tracking-tighter tabular-nums drop-shadow-md">
+              <div className="text-5xl md:text-6xl font-black text-teal-400 tracking-tighter tabular-nums drop-shadow-md">
                 {metrics.iops > 0 ? formatMetric((metrics.queueDepth / metrics.iops) * 1000) : '0.00'}
               </div>
               <div className="text-[10px] font-mono text-slate-500 mt-4 font-bold uppercase tracking-widest">MS / COMPLETION</div>

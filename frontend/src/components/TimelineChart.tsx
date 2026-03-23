@@ -3,6 +3,7 @@ import type { HistoryFrame } from '../types';
 import { formatMetric } from '../utils/formatters';
 import { areaPath, createLinearScale, getTickValues, niceUpperBound, polylinePath } from '../utils/chartScales';
 import { HorizontalGrid, XAxisLabels } from './charts/SVGPrimitives';
+import { InfoTooltip } from './UI/InfoTooltip';
 
 interface Props {
   history: HistoryFrame[];
@@ -18,8 +19,8 @@ interface HoverPoint {
 export function TimelineChart({ history }: Props) {
   const [hoveredPoint, setHoveredPoint] = useState<HoverPoint | null>(null);
   const width = 960;
-  const height = 280;
-  const margin = { top: 20, right: 14, bottom: 34, left: 40 };
+  const height = 320;
+  const margin = { top: 22, right: 18, bottom: 52, left: 52 };
   const plotLeft = margin.left;
   const plotRight = width - margin.right;
   const plotTop = margin.top;
@@ -49,10 +50,23 @@ export function TimelineChart({ history }: Props) {
   return (
     <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
       <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
-        <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">CPI Timeline</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">CPI Timeline</h3>
+          <InfoTooltip
+            title="CPI Timeline"
+            shortSummary="Time series of cycles per instruction. Useful to spot sustained pipeline pressure and abrupt efficiency regressions."
+            wikiHash="#cpi"
+          />
+        </div>
       </div>
       <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50 relative">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="CPI timeline">
+          <defs>
+            <clipPath id="timeline-plot-clip">
+              <rect x={plotLeft} y={plotTop} width={plotRight - plotLeft} height={plotBottom - plotTop} />
+            </clipPath>
+          </defs>
+
           <HorizontalGrid left={plotLeft} right={plotRight} ticks={ticks} />
 
           {ticks.map((tick, idx) => (
@@ -71,29 +85,31 @@ export function TimelineChart({ history }: Props) {
           <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="#475569" strokeWidth="1" />
           <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} stroke="#475569" strokeWidth="1" />
 
-          <path d={areaPath(points, plotBottom)} fill="rgba(220, 38, 38, 0.15)" />
-          <path d={polylinePath(points)} fill="none" stroke="#DC2626" strokeWidth="2.5" />
+          <g clipPath="url(#timeline-plot-clip)">
+            <path d={areaPath(points, plotBottom)} fill="rgba(220, 38, 38, 0.15)" />
+            <path d={polylinePath(points)} fill="none" stroke="#DC2626" strokeWidth="2.5" />
 
-          {points.map((p, idx) => (
-            <circle
-              key={`cpi-${idx}`}
-              cx={p.x}
-              cy={p.y}
-              r="4"
-              fill="#EF4444"
-              onMouseEnter={(e) => setHoveredPoint({
-                x: e.clientX,
-                y: e.clientY,
-                value: safeHistory[idx].cpi,
-                label: safeHistory[idx].time,
-              })}
-              onMouseLeave={() => setHoveredPoint(null)}
-            >
-              <title>{`${safeHistory[idx].time} - CPI: ${formatMetric(safeHistory[idx].cpi)}`}</title>
-            </circle>
-          ))}
+            {points.map((p, idx) => (
+              <circle
+                key={`cpi-${idx}`}
+                cx={p.x}
+                cy={p.y}
+                r="4"
+                fill="#EF4444"
+                onMouseEnter={(e) => setHoveredPoint({
+                  x: e.clientX,
+                  y: e.clientY,
+                  value: safeHistory[idx].cpi,
+                  label: safeHistory[idx].time,
+                })}
+                onMouseLeave={() => setHoveredPoint(null)}
+              >
+                <title>{`${safeHistory[idx].time} - CPI: ${formatMetric(safeHistory[idx].cpi)}`}</title>
+              </circle>
+            ))}
+          </g>
 
-          <XAxisLabels labels={xLabels} y={height - 10} />
+          <XAxisLabels labels={xLabels} y={height - 14} />
 
           <text x={10} y={plotTop + 12} className="fill-slate-400 font-mono" style={{ fontSize: '9px' }}>CYCLES</text>
         </svg>

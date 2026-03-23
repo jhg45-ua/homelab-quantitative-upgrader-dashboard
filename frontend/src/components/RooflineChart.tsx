@@ -10,8 +10,8 @@ interface Props {
 
 export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 102.4 }: Props) {
   const width = 960;
-  const height = 280;
-  const margin = { top: 22, right: 18, bottom: 38, left: 52 };
+  const height = 360;
+  const margin = { top: 24, right: 24, bottom: 56, left: 74 };
   const plotLeft = margin.left;
   const plotRight = width - margin.right;
   const plotTop = margin.top;
@@ -66,12 +66,19 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
       </div>
       <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="Architecture roofline log-log chart">
+          <defs>
+            <clipPath id="roofline-plot-clip">
+              <rect x={plotLeft} y={plotTop} width={plotRight - plotLeft} height={plotBottom - plotTop} />
+            </clipPath>
+          </defs>
+
           {yTicks.map((tick) => (
             <g key={`y-grid-${tick}`}>
               <line x1={plotLeft} x2={plotRight} y1={yScale(tick)} y2={yScale(tick)} stroke="#1E293B" strokeWidth="1" />
               <text
-                x={plotLeft - 8}
-                y={yScale(tick) + 3}
+                x={plotLeft - 10}
+                y={yScale(tick)}
+                dominantBaseline="middle"
                 textAnchor="end"
                 className="fill-slate-400 font-mono"
                 style={{ fontSize: '9px' }}
@@ -86,7 +93,7 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
               <line x1={xScale(tick)} x2={xScale(tick)} y1={plotTop} y2={plotBottom} stroke="#1E293B" strokeWidth="1" />
               <text
                 x={xScale(tick)}
-                y={plotBottom + 14}
+                y={plotBottom + 16}
                 textAnchor="middle"
                 className="fill-slate-500 font-mono"
                 style={{ fontSize: '9px' }}
@@ -99,26 +106,28 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
           <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="#475569" strokeWidth="1" />
           <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} stroke="#475569" strokeWidth="1" />
 
-          <path d={polylinePath(bwLineData)} fill="none" stroke="#0D9488" strokeWidth="3">
-            <title>{`Memory BW Roof - Peak BW: ${formatMetric(PEAK_BW_GBS)} GB/s`}</title>
-          </path>
+          <g clipPath="url(#roofline-plot-clip)">
+            <path d={polylinePath(bwLineData)} fill="none" stroke="#0D9488" strokeWidth="3">
+              <title>{`Memory BW Roof - Peak BW: ${formatMetric(PEAK_BW_GBS)} GB/s`}</title>
+            </path>
 
-          <path d={polylinePath(computeLineData)} fill="none" stroke="#DC2626" strokeWidth="3">
-            <title>{`Compute Roof - Peak: ${formatMetric(PEAK_MIPS)} MIPS`}</title>
-          </path>
+            <path d={polylinePath(computeLineData)} fill="none" stroke="#DC2626" strokeWidth="3">
+              <title>{`Compute Roof - Peak: ${formatMetric(PEAK_MIPS)} MIPS`}</title>
+            </path>
 
-          <circle cx={xScale(safeOI)} cy={yScale(safeMIPS)} r="7" fill="#3B82F6" stroke="#BFDBFE" strokeWidth="2.5">
-            <title>{`Live Workload | OI: ${formatMetric(safeOI)} | MIPS: ${formatMetric(safeMIPS)}`}</title>
-          </circle>
-          <text
-            x={xScale(safeOI)}
-            y={Math.max(plotTop + 10, yScale(safeMIPS) - 12)}
-            textAnchor="middle"
-            className="fill-blue-300 font-semibold"
-            style={{ fontSize: '9px' }}
-          >
-            WORKLOAD
-          </text>
+            <circle cx={xScale(safeOI)} cy={yScale(safeMIPS)} r="7" fill="#3B82F6" stroke="#BFDBFE" strokeWidth="2.5">
+              <title>{`Live Workload | OI: ${formatMetric(safeOI)} | MIPS: ${formatMetric(safeMIPS)}`}</title>
+            </circle>
+            <text
+              x={xScale(safeOI)}
+              y={Math.max(plotTop + 10, yScale(safeMIPS) - 12)}
+              textAnchor="middle"
+              className="fill-blue-300 font-semibold"
+              style={{ fontSize: '9px' }}
+            >
+              WORKLOAD
+            </text>
+          </g>
 
           <text x={(plotLeft + plotRight) / 2} y={height - 6} textAnchor="middle" className="fill-slate-500" style={{ fontSize: '10px' }}>
             OPERATIONAL INTENSITY (Ops/Byte)

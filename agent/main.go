@@ -140,6 +140,8 @@ func main() {
 		log.Fatalf("Failed to read initial PMU counters: %v", err)
 	}
 
+	prevNumaStats, _ := numa.Collect()
+
 	// Previous TCP retransmit count for delta computation
 	var prevTcpRetransmits uint64 = 0
 	if netObjs.TcpRetransmitCount != nil {
@@ -244,7 +246,7 @@ func main() {
 				if err := tsdbClient.Push([]tsdb.Metric{{
 					Name:   "hqud_blk_queue_depth",
 					Labels: map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_io"},
-					Value: v, Timestamp: now,
+					Value:  v, Timestamp: now,
 				}}); err != nil {
 					log.Printf("TSDB push queue depth failed: %v", err)
 				}
@@ -260,7 +262,7 @@ func main() {
 				if err := tsdbClient.Push([]tsdb.Metric{{
 					Name:   "hqud_blk_iops",
 					Labels: map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_io"},
-					Value: v, Timestamp: now,
+					Value:  v, Timestamp: now,
 				}}); err != nil {
 					log.Printf("TSDB push IOPS failed: %v", err)
 				}
@@ -280,6 +282,8 @@ func main() {
 		deltaCacheRefs := calculateDelta(curr.CacheRefs, prevCounters.CacheRefs)
 		deltaCacheMisses := calculateDelta(curr.CacheMisses, prevCounters.CacheMisses)
 		deltaCtx := calculateDelta(curr.CtxSwitches, prevCounters.CtxSwitches)
+		deltaStallsMemAny := calculateDelta(curr.StallsMemAny, prevCounters.StallsMemAny)
+		deltaStallsTotal := calculateDelta(curr.StallsTotal, prevCounters.StallsTotal)
 
 		prevCounters = curr
 
@@ -302,11 +306,23 @@ func main() {
 			// Context Switches per second = delta / 5s tick interval
 			ctxSwitchesPS := float64(deltaCtx) / 5.0
 
+			memBoundPct := 0.0
+			coreBoundPct := 0.0
+			if deltaStallsTotal > 0 {
+				memBoundPct = (float64(deltaStallsMemAny) / float64(deltaStallsTotal)) * 100.0
+				coreStalls := uint64(0)
+				if deltaStallsTotal > deltaStallsMemAny {
+					coreStalls = deltaStallsTotal - deltaStallsMemAny
+				}
+				coreBoundPct = (float64(coreStalls) / float64(deltaStallsTotal)) * 100.0
+			}
+
 			log.Printf("--- Cache Miss Rate: %.2f%% | AMAT: %.2f cycles | CtxSw/s: %.2f ---", cacheMissRate, amat, ctxSwitchesPS)
+			log.Printf("--- TMA L2 PMU: mem_bound=%.2f%% core_bound=%.2f%% (stall_mem=%d stall_total=%d) ---", memBoundPct, coreBoundPct, deltaStallsMemAny, deltaStallsTotal)
 
 			// --- Restored Diagnostics ---
 			log.Printf("[DEBUG] PMU Totals - Cores Scanned: %d, Total Instructions: %d, Total Cycles: %d, Cache Misses: %d", runtime.NumCPU(), deltaInst, deltaCyc, deltaCacheMisses)
-			
+
 			debugOI := 1000.0
 			if cacheMissRate > 0 {
 				debugOI = 100.0 / cacheMissRate
@@ -343,6 +359,18 @@ func main() {
 					Name:      "hqud_cpu_ips",
 					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_pmu"},
 					Value:     float64(deltaInst) / 5.0,
+					Timestamp: now,
+				},
+				{
+					Name:      "hqud_tma_mem_bound",
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_pmu"},
+					Value:     memBoundPct,
+					Timestamp: now,
+				},
+				{
+					Name:      "hqud_tma_core_bound",
+					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "ebpf_pmu"},
+					Value:     coreBoundPct,
 					Timestamp: now,
 				},
 			}
@@ -392,19 +420,44 @@ func main() {
 			log.Printf("[NUMA] sysfs read skipped: %v", numaErr)
 		} else {
 			numaMissRate := numaStats.MissRate()
+			deltaNode0Local := calculateDelta(numaStats.Node0LocalNode, prevNumaStats.Node0LocalNode)
+			deltaNode0Other := calculateDelta(numaStats.Node0OtherNode, prevNumaStats.Node0OtherNode)
+			totalNode0 := deltaNode0Local + deltaNode0Other
+			numaNode0Cpu := 0.0
+			if totalNode0 > 0 {
+				numaNode0Cpu = (float64(deltaNode0Local) / float64(totalNode0)) * 100.0
+			}
+			numaInterconnectTraffic := float64(deltaNode0Other) / 5.0
+			prevNumaStats = numaStats
+
 			log.Printf("--- NUMA Miss Rate: %.2f%% (Hits: %d, Misses: %d) ---",
 				numaMissRate, numaStats.TotalHits, numaStats.TotalMisses)
+			log.Printf("--- NUMA Node0 Local Share: %.2f%% | Interconnect Traffic: %.2f access/s ---", numaNode0Cpu, numaInterconnectTraffic)
 
-			go func(v float64) {
-				if err := tsdbClient.Push([]tsdb.Metric{{
-					Name:      "hqud_numa_miss_rate",
-					Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
-					Value:     v,
-					Timestamp: now,
-				}}); err != nil {
+			go func(missRate, node0Cpu, interconnect float64) {
+				if err := tsdbClient.Push([]tsdb.Metric{
+					{
+						Name:      "hqud_numa_miss_rate",
+						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
+						Value:     missRate,
+						Timestamp: now,
+					},
+					{
+						Name:      "hqud_numa_node0_cpu",
+						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
+						Value:     node0Cpu,
+						Timestamp: now,
+					},
+					{
+						Name:      "hqud_numa_interconnect_traffic",
+						Labels:    map[string]string{"host": cfg.Agent.NodeName, "modulo": "numa_sysfs"},
+						Value:     interconnect,
+						Timestamp: now,
+					},
+				}); err != nil {
 					log.Printf("TSDB push NUMA failed: %v", err)
 				}
-			}(numaMissRate)
+			}(numaMissRate, numaNode0Cpu, numaInterconnectTraffic)
 		}
 
 		// --- MODULE F: TCP Retransmit Rate ---

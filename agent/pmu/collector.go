@@ -2,17 +2,19 @@ package pmu
 
 import (
 	"fmt"
-	"runtime"
 	"golang.org/x/sys/unix"
+	"runtime"
 )
 
 // Collector handles reading PMU hardware and software counters via perf_event_open
 type Collector struct {
-	fdsCycles      []int
+	fdsCycles       []int
 	fdsInstructions []int
-	fdsCacheRefs   []int
-	fdsCacheMisses []int
-	fdsCtxSwitches []int
+	fdsCacheRefs    []int
+	fdsCacheMisses  []int
+	fdsCtxSwitches  []int
+	fdsStallsMemAny []int
+	fdsStallsTotal  []int
 }
 
 // Counters holds the absolute values read from all perf_event_open file descriptors
@@ -22,7 +24,16 @@ type Counters struct {
 	CacheRefs    uint64
 	CacheMisses  uint64
 	CtxSwitches  uint64
+	StallsMemAny uint64
+	StallsTotal  uint64
 }
+
+const (
+	// Intel Sandy/Ivy Bridge raw PMU events for CYCLE_ACTIVITY (event select 0xA3).
+	// Config format for perf raw is event|umask<<8.
+	rawCycleActivityStallsTotal  = 0x04A3
+	rawCycleActivityStallsMemAny = 0x14A3
+)
 
 func openHWCounter(config uint64, cpu int) (int, error) {
 	attr := &unix.PerfEventAttr{
@@ -50,6 +61,19 @@ func openSWCounter(config uint64, cpu int) (int, error) {
 	return fd, nil
 }
 
+func openRawCounter(config uint64, cpu int) (int, error) {
+	attr := &unix.PerfEventAttr{
+		Type:   unix.PERF_TYPE_RAW,
+		Config: config,
+		Bits:   unix.PerfBitDisabled,
+	}
+	fd, err := unix.PerfEventOpen(attr, -1, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC)
+	if err != nil {
+		return 0, err
+	}
+	return fd, nil
+}
+
 // NewCollector initializes PMU hardware counters for CPU cycles, instructions, cache and context switches.
 // We attach system-wide (PID -1) on all logical CPUs using runtime.NumCPU() iteratively.
 func NewCollector() (*Collector, error) {
@@ -60,6 +84,8 @@ func NewCollector() (*Collector, error) {
 		fdsCacheRefs:    make([]int, 0, numCPUs),
 		fdsCacheMisses:  make([]int, 0, numCPUs),
 		fdsCtxSwitches:  make([]int, 0, numCPUs),
+		fdsStallsMemAny: make([]int, 0, numCPUs),
+		fdsStallsTotal:  make([]int, 0, numCPUs),
 	}
 
 	for cpu := 0; cpu < numCPUs; cpu++ {
@@ -97,6 +123,20 @@ func NewCollector() (*Collector, error) {
 			return nil, fmt.Errorf("failed to open CONTEXT_SWITCHES on cpu %d: %v", cpu, err)
 		}
 		c.fdsCtxSwitches = append(c.fdsCtxSwitches, fd5)
+
+		fd6, err := openRawCounter(rawCycleActivityStallsMemAny, cpu)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("failed to open CYCLE_ACTIVITY.STALLS_MEM_ANY on cpu %d: %v", cpu, err)
+		}
+		c.fdsStallsMemAny = append(c.fdsStallsMemAny, fd6)
+
+		fd7, err := openRawCounter(rawCycleActivityStallsTotal, cpu)
+		if err != nil {
+			c.Close()
+			return nil, fmt.Errorf("failed to open CYCLE_ACTIVITY.STALLS_TOTAL on cpu %d: %v", cpu, err)
+		}
+		c.fdsStallsTotal = append(c.fdsStallsTotal, fd7)
 	}
 
 	return c, nil
@@ -108,6 +148,8 @@ func (c *Collector) Start() error {
 	allFDs = append(allFDs, c.fdsCacheRefs...)
 	allFDs = append(allFDs, c.fdsCacheMisses...)
 	allFDs = append(allFDs, c.fdsCtxSwitches...)
+	allFDs = append(allFDs, c.fdsStallsMemAny...)
+	allFDs = append(allFDs, c.fdsStallsTotal...)
 
 	for _, fd := range allFDs {
 		if err := unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_ENABLE, 0); err != nil {
@@ -123,6 +165,8 @@ func (c *Collector) Stop() {
 	allFDs = append(allFDs, c.fdsCacheRefs...)
 	allFDs = append(allFDs, c.fdsCacheMisses...)
 	allFDs = append(allFDs, c.fdsCtxSwitches...)
+	allFDs = append(allFDs, c.fdsStallsMemAny...)
+	allFDs = append(allFDs, c.fdsStallsTotal...)
 
 	for _, fd := range allFDs {
 		unix.IoctlSetInt(fd, unix.PERF_EVENT_IOC_DISABLE, 0)
@@ -136,6 +180,8 @@ func (c *Collector) Close() {
 	allFDs = append(allFDs, c.fdsCacheRefs...)
 	allFDs = append(allFDs, c.fdsCacheMisses...)
 	allFDs = append(allFDs, c.fdsCtxSwitches...)
+	allFDs = append(allFDs, c.fdsStallsMemAny...)
+	allFDs = append(allFDs, c.fdsStallsTotal...)
 
 	for _, fd := range allFDs {
 		unix.Close(fd)
@@ -185,6 +231,14 @@ func (c *Collector) ReadCounters() (Counters, error) {
 	if err != nil {
 		return Counters{}, fmt.Errorf("failed to sum ctx_switches: %v", err)
 	}
+	stallsMemAny, err := sumU64(c.fdsStallsMemAny)
+	if err != nil {
+		return Counters{}, fmt.Errorf("failed to sum stalls_mem_any: %v", err)
+	}
+	stallsTotal, err := sumU64(c.fdsStallsTotal)
+	if err != nil {
+		return Counters{}, fmt.Errorf("failed to sum stalls_total: %v", err)
+	}
 
 	return Counters{
 		Cycles:       cycles,
@@ -192,5 +246,7 @@ func (c *Collector) ReadCounters() (Counters, error) {
 		CacheRefs:    cacheRefs,
 		CacheMisses:  cacheMisses,
 		CtxSwitches:  ctx,
+		StallsMemAny: stallsMemAny,
+		StallsTotal:  stallsTotal,
 	}, nil
 }

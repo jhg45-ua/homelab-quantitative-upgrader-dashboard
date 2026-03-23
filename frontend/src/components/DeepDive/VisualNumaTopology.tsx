@@ -7,8 +7,7 @@ interface CpuSnapshot {
 }
 
 interface RamSnapshot {
-  usedGb: number;
-  capacityGb: number;
+  usedPct: number;
 }
 
 interface Props {
@@ -22,26 +21,22 @@ function clamp(value: number, min: number, max: number): number {
 export function VisualNumaTopology({ metrics }: Props) {
   const ipcBase = metrics.cpi > 0 ? 1 / metrics.cpi : 0;
   const node0Cpu: CpuSnapshot = {
-    loadPct: clamp(metrics.tmaRetiring + metrics.tmaBackEnd * 0.45, 8, 95),
-    ipc: clamp(ipcBase * 1.03, 0.2, 4),
+    loadPct: clamp(Number(metrics.numaNode0Cpu) || 0, 0, 100),
+    ipc: clamp(ipcBase, 0, 10),
   };
   const node1Cpu: CpuSnapshot = {
-    loadPct: clamp(metrics.tmaRetiring + metrics.tmaFrontEnd * 0.4 - metrics.numaMiss * 0.2, 6, 92),
-    ipc: clamp(ipcBase * 0.97, 0.2, 4),
+    loadPct: clamp(100 - (Number(metrics.numaNode0Cpu) || 0), 0, 100),
+    ipc: clamp(ipcBase, 0, 10),
   };
 
-  const capacityGb = 96;
   const node0Ram: RamSnapshot = {
-    usedGb: clamp(48 + metrics.memBound * 0.55 + metrics.queueDepth * 0.12, 20, capacityGb),
-    capacityGb,
+    usedPct: clamp(Number(metrics.memBound) || 0, 0, 100),
   };
   const node1Ram: RamSnapshot = {
-    usedGb: clamp(44 + metrics.coreBound * 0.5 + metrics.numaMiss * 0.35, 18, capacityGb),
-    capacityGb,
+    usedPct: clamp(Number(metrics.coreBound) || 0, 0, 100),
   };
 
-  // Estimate inter-socket pressure from NUMA misses and retransmits for real-time visualization.
-  const qpiCrossTrafficGbps = clamp(metrics.numaMiss * 0.9 + metrics.tcpRetrans * 0.12, 2, 42);
+  const qpiCrossTrafficGbps = Math.max(0, Number(metrics.numaInterconnectTraffic) || 0);
 
   const qpiAlert = metrics.numaMiss >= 12 || qpiCrossTrafficGbps >= 20;
   const qpiStroke = qpiAlert ? '#dc2626' : '#14b8a6';
@@ -51,7 +46,7 @@ export function VisualNumaTopology({ metrics }: Props) {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="font-sans text-xs uppercase text-slate-400 tracking-widest">Visual NUMA Topology</h3>
         <div className="font-mono text-white text-sm">
-          QPI Bandwidth: {formatMetric(qpiCrossTrafficGbps)} GB/s
+          QPI Bandwidth: {formatMetric(qpiCrossTrafficGbps)}
         </div>
       </div>
 
@@ -105,7 +100,7 @@ export function VisualNumaTopology({ metrics }: Props) {
           Used / Capacity
         </text>
         <text x="320" y="358" className="font-mono text-white text-sm">
-          {formatMetric(node0Ram.usedGb)} GB / {formatMetric(node0Ram.capacityGb)} GB
+          {formatMetric(node0Ram.usedPct)}%
         </text>
 
         <rect x="660" y="40" width="500" height="420" rx="16" fill="#0f172a" stroke="#334155" strokeWidth="2" />
@@ -138,7 +133,7 @@ export function VisualNumaTopology({ metrics }: Props) {
           Used / Capacity
         </text>
         <text x="940" y="358" className="font-mono text-white text-sm">
-          {formatMetric(node1Ram.usedGb)} GB / {formatMetric(node1Ram.capacityGb)} GB
+          {formatMetric(node1Ram.usedPct)}%
         </text>
 
         <path
@@ -160,11 +155,14 @@ export function VisualNumaTopology({ metrics }: Props) {
           Cross-Traffic
         </text>
         <text x="600" y="307" textAnchor="middle" className="font-mono text-white text-sm">
-          {formatMetric(qpiCrossTrafficGbps)} GB/s
+          {formatMetric(qpiCrossTrafficGbps)}
         </text>
       </svg>
 
-      <div className="mt-3 flex items-center justify-end">
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="font-mono text-xs text-slate-400">
+          RAM Used (Node0/Node1): {formatMetric(node0Ram.usedPct)}% / {formatMetric(node1Ram.usedPct)}%
+        </div>
         <div className="font-mono text-xs text-white">
           QPI STATUS: {qpiAlert ? 'ALERT' : 'HEALTHY'}
         </div>

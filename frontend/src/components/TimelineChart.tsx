@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import type { HistoryFrame } from '../types';
 import { formatMetric } from '../utils/formatters';
 import { areaPath, createLinearScale, getTickValues, niceUpperBound, polylinePath } from '../utils/chartScales';
@@ -7,7 +8,15 @@ interface Props {
   history: HistoryFrame[];
 }
 
+interface HoverPoint {
+  x: number;
+  y: number;
+  value: number;
+  label: string;
+}
+
 export function TimelineChart({ history }: Props) {
+  const [hoveredPoint, setHoveredPoint] = useState<HoverPoint | null>(null);
   const width = 960;
   const height = 280;
   const margin = { top: 20, right: 14, bottom: 34, left: 40 };
@@ -36,9 +45,22 @@ export function TimelineChart({ history }: Props) {
       <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
         <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">CPI Timeline</h3>
       </div>
-      <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
+      <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50 relative">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="CPI timeline">
           <HorizontalGrid left={plotLeft} right={plotRight} ticks={ticks} />
+
+          {ticks.map((tick, idx) => (
+            <line
+              key={`dash-grid-${idx}-${tick.value}`}
+              x1={plotLeft}
+              x2={plotRight}
+              y1={tick.y}
+              y2={tick.y}
+              stroke="#334155"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+          ))}
 
           <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="#475569" strokeWidth="1" />
           <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} stroke="#475569" strokeWidth="1" />
@@ -47,7 +69,20 @@ export function TimelineChart({ history }: Props) {
           <path d={polylinePath(points)} fill="none" stroke="#DC2626" strokeWidth="2.5" />
 
           {points.map((p, idx) => (
-            <circle key={`cpi-${idx}`} cx={p.x} cy={p.y} r="2.5" fill="#DC2626">
+            <circle
+              key={`cpi-${idx}`}
+              cx={p.x}
+              cy={p.y}
+              r="4"
+              fill="#EF4444"
+              onMouseEnter={(e) => setHoveredPoint({
+                x: e.clientX,
+                y: e.clientY,
+                value: safeHistory[idx].cpi,
+                label: safeHistory[idx].time,
+              })}
+              onMouseLeave={() => setHoveredPoint(null)}
+            >
               <title>{`${safeHistory[idx].time} - CPI: ${formatMetric(safeHistory[idx].cpi)}`}</title>
             </circle>
           ))}
@@ -56,6 +91,16 @@ export function TimelineChart({ history }: Props) {
 
           <text x={10} y={plotTop + 12} className="fill-slate-400 font-mono" style={{ fontSize: '9px' }}>CYCLES</text>
         </svg>
+
+        {hoveredPoint && (
+          <div
+            className="fixed z-50 pointer-events-none bg-slate-800 border border-slate-600 shadow-xl p-2 rounded"
+            style={{ top: hoveredPoint.y - 40, left: hoveredPoint.x + 10 }}
+          >
+            <div className="font-sans text-xs text-slate-400">{hoveredPoint.label}</div>
+            <div className="font-mono text-sm text-white font-bold">{formatMetric(hoveredPoint.value)}</div>
+          </div>
+        )}
       </div>
     </div>
   );

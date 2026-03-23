@@ -16,6 +16,8 @@ export interface MetricsState {
   ipsPerW: number;
   amat: number;
   numaMiss: number;
+  numaNode0Cpu: number;
+  numaInterconnectTraffic: number;
   tcpRetrans: number;
   ips: number;
   cpi: number;

@@ -121,7 +121,7 @@ export function TMAChart({ metrics }: Props) {
             {formatMetric(bePct)}%
           </text>
 
-          <text x={beX + beW / 2} y={subY - 10} textAnchor="middle" className="font-sans text-xs uppercase text-slate-400 tracking-widest">
+          <text x={beX + beW / 2} y={subY - 10} textAnchor="middle" className="font-sans font-bold text-xs uppercase fill-white tracking-widest">
             Back-End Bound L2
           </text>
 
@@ -140,10 +140,10 @@ export function TMAChart({ metrics }: Props) {
             CORE {formatMetric(coreInput)}%
           </text>
 
-          <text x={mainX} y={subY + 58} className="font-sans text-xs uppercase text-slate-400 tracking-widest">
+          <text x={mainX} y={subY + 58} className="font-sans font-bold text-xs uppercase fill-teal-300 tracking-widest">
             Recommendation
           </text>
-          <text x={mainX} y={subY + 80} className="font-mono text-white text-xs">
+          <text x={mainX} y={subY + 80} className="font-mono fill-white text-xs">
             {recommendation}
           </text>
         </svg>

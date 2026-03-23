@@ -1,3 +1,4 @@
+import { useState } from 'preact/hooks';
 import type { HistoryFrame } from '../types';
 import { formatMetric } from '../utils/formatters';
 import { createLinearScale, getTickValues, niceUpperBound, polylinePath } from '../utils/chartScales';
@@ -7,7 +8,15 @@ interface Props {
   history: HistoryFrame[];
 }
 
+interface HoverPoint {
+  x: number;
+  y: number;
+  value: number;
+  label: string;
+}
+
 export function ComboChart({ history }: Props) {
+  const [hoveredPoint, setHoveredPoint] = useState<HoverPoint | null>(null);
   const width = 960;
   const height = 280;
   const margin = { top: 20, right: 42, bottom: 34, left: 40 };
@@ -35,16 +44,30 @@ export function ComboChart({ history }: Props) {
     .filter(({ idx }) => idx % xLabelStep === 0 || idx === safeHistory.length - 1)
     .map(({ idx, time }) => ({ x: xScale(idx), text: time }));
 
-  const barWidth = Math.max(6, plotWidth / Math.max(1, safeHistory.length) - 6);
+  const barSlot = plotWidth / Math.max(1, safeHistory.length);
+  const barWidth = Math.max(8, Math.min(24, barSlot * 0.62));
 
   return (
     <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
       <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
         <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Pressure & OS Overhead</h3>
       </div>
-      <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
+      <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50 relative">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="Context switches and cache miss">
           <HorizontalGrid left={plotLeft} right={plotRight} ticks={leftTicks} />
+
+          {leftTicks.map((tick, idx) => (
+            <line
+              key={`dash-grid-${idx}-${tick.value}`}
+              x1={plotLeft}
+              x2={plotRight}
+              y1={tick.y}
+              y2={tick.y}
+              stroke="#334155"
+              strokeWidth="1"
+              strokeDasharray="4 4"
+            />
+          ))}
 
           <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="#475569" strokeWidth="1" />
           <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} stroke="#475569" strokeWidth="1" />
@@ -55,7 +78,22 @@ export function ComboChart({ history }: Props) {
             const y = yLeftScale(h.ctxSwitches);
             const barHeight = plotBottom - y;
             return (
-              <rect key={`bar-${idx}`} x={x} y={y} width={barWidth} height={barHeight} fill="#475569" opacity="0.85">
+              <rect
+                key={`bar-${idx}`}
+                x={x}
+                y={y}
+                width={barWidth}
+                height={barHeight}
+                fill="#475569"
+                opacity="0.85"
+                onMouseEnter={(e) => setHoveredPoint({
+                  x: e.clientX,
+                  y: e.clientY,
+                  value: h.ctxSwitches,
+                  label: `${h.time} - Context Switches`,
+                })}
+                onMouseLeave={() => setHoveredPoint(null)}
+              >
                 <title>{`${h.time} - Context Switches: ${formatMetric(h.ctxSwitches)}`}</title>
               </rect>
             );
@@ -63,7 +101,20 @@ export function ComboChart({ history }: Props) {
 
           <path d={polylinePath(linePoints)} fill="none" stroke="#0D9488" strokeWidth="2.5" />
           {linePoints.map((p, idx) => (
-            <circle key={`line-${idx}`} cx={p.x} cy={p.y} r="2.5" fill="#0D9488">
+            <circle
+              key={`line-${idx}`}
+              cx={p.x}
+              cy={p.y}
+              r="4"
+              fill="#0D9488"
+              onMouseEnter={(e) => setHoveredPoint({
+                x: e.clientX,
+                y: e.clientY,
+                value: safeHistory[idx].cacheMiss,
+                label: `${safeHistory[idx].time} - Cache Miss`,
+              })}
+              onMouseLeave={() => setHoveredPoint(null)}
+            >
               <title>{`${safeHistory[idx].time} - Cache Miss: ${formatMetric(safeHistory[idx].cacheMiss)}%`}</title>
             </circle>
           ))}
@@ -86,6 +137,16 @@ export function ComboChart({ history }: Props) {
             </text>
           ))}
         </svg>
+
+        {hoveredPoint && (
+          <div
+            className="fixed z-50 pointer-events-none bg-slate-800 border border-slate-600 shadow-xl p-2 rounded"
+            style={{ top: hoveredPoint.y - 40, left: hoveredPoint.x + 10 }}
+          >
+            <div className="font-sans text-xs text-slate-400">{hoveredPoint.label}</div>
+            <div className="font-mono text-sm text-white font-bold">{formatMetric(hoveredPoint.value)}</div>
+          </div>
+        )}
       </div>
     </div>
   );

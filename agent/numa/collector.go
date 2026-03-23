@@ -4,11 +4,12 @@
 //
 // Source: /sys/devices/system/node/node*/numastat
 // Fields:
-//   numa_hit     — accesses successfully made to local NUMA node memory
-//   numa_miss    — accesses to this node that were intended for another node
-//   numa_foreign — accesses made locally that should have gone to another node
-//   local_node   — accesses made from this node to its own memory
-//   other_node   — accesses made from another node to memory on this node
+//
+//	numa_hit     — accesses successfully made to local NUMA node memory
+//	numa_miss    — accesses to this node that were intended for another node
+//	numa_foreign — accesses made locally that should have gone to another node
+//	local_node   — accesses made from this node to its own memory
+//	other_node   — accesses made from another node to memory on this node
 package numa
 
 import (
@@ -24,8 +25,13 @@ const numastatBase = "/sys/devices/system/node"
 
 // Stats holds aggregated NUMA counters across all NUMA nodes.
 type Stats struct {
-	TotalHits   uint64 // suma de numa_hit en todos los nodos
-	TotalMisses uint64 // suma de numa_miss en todos los nodos
+	TotalHits      uint64 // suma de numa_hit en todos los nodos
+	TotalMisses    uint64 // suma de numa_miss en todos los nodos
+	TotalForeign   uint64
+	TotalLocalNode uint64
+	TotalOtherNode uint64
+	Node0LocalNode uint64
+	Node0OtherNode uint64
 }
 
 // MissRate returns the NUMA miss rate as a percentage (0–100).
@@ -49,6 +55,8 @@ func Collect() (Stats, error) {
 	found := false
 
 	for _, nodeDir := range entries {
+		nodeName := filepath.Base(nodeDir)
+		isNode0 := nodeName == "node0"
 		statFile := filepath.Join(nodeDir, "numastat")
 		f, err := os.Open(statFile)
 		if err != nil {
@@ -73,6 +81,21 @@ func Collect() (Stats, error) {
 				found = true
 			case "numa_miss":
 				aggregate.TotalMisses += val
+				found = true
+			case "numa_foreign":
+				aggregate.TotalForeign += val
+				found = true
+			case "local_node":
+				aggregate.TotalLocalNode += val
+				if isNode0 {
+					aggregate.Node0LocalNode += val
+				}
+				found = true
+			case "other_node":
+				aggregate.TotalOtherNode += val
+				if isNode0 {
+					aggregate.Node0OtherNode += val
+				}
 				found = true
 			}
 		}

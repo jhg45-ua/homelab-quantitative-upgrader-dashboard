@@ -29,12 +29,7 @@ function deriveTMA(cpi: number, cacheMiss: number, ctxSwitches: number) {
   const frontEnd = Math.round(Math.max(3, 15 - cpiPenalty * 8));
   const retiring = Math.max(5, 100 - backEnd - badSpec - frontEnd);
 
-  // L2 split heuristic: cache pressure drives Memory Bound, remaining backend pressure is Core Bound.
-  const memShare = Math.min(0.85, Math.max(0.2, cachePenalty * 0.75 + cpiPenalty * 0.15));
-  const memBound = Number((backEnd * memShare).toFixed(2));
-  const coreBound = Number((backEnd - memBound).toFixed(2));
-
-  return { retiring, badSpec, frontEnd, backEnd, memBound, coreBound };
+  return { retiring, badSpec, frontEnd, backEnd };
 }
 
 const HOST = 'r720-baremetal';
@@ -57,11 +52,11 @@ async function fetchMetric(metricName: string, rawQuery?: string): Promise<numbe
 
 export function useMetrics() {
   const [metrics, setMetrics] = useState<MetricsState>({
-    powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, tcpRetrans: 0,
+    powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, numaNode0Cpu: 0, numaInterconnectTraffic: 0, tcpRetrans: 0,
     ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0, uptimeSeconds: 0,
-    tmaRetiring: 25, tmaBadSpec: 5, tmaFrontEnd: 10, tmaBackEnd: 60,
-    memBound: 35, coreBound: 25,
-    queueDepth: 12, iops: 4500, mutexContention: 0,
+    tmaRetiring: 0, tmaBadSpec: 0, tmaFrontEnd: 0, tmaBackEnd: 0,
+    memBound: 0, coreBound: 0,
+    queueDepth: 0, iops: 0, mutexContention: 0,
   });
 
   const [history, setHistory] = useState<HistoryFrame[]>([]);
@@ -78,7 +73,8 @@ export function useMetrics() {
         const [
           powerW, ipsPerW, amat, numaMiss, tcpRetrans,
           ips, cpi, cacheMiss, ctxSwitches, uptimeSeconds,
-          queueDepth, iops,
+          queueDepth, iops, memBoundRaw, coreBoundRaw,
+          numaNode0CpuRaw, numaInterconnectTrafficRaw,
         ] = await Promise.all([
           fetchMetric('hqud_power_watts'),
           fetchMetric('hqud_efficiency_ips_per_watt'),
@@ -92,33 +88,39 @@ export function useMetrics() {
           fetchMetric('hqud_os_uptime_seconds'),
           fetchMetric('hqud_blk_queue_depth'),
           fetchMetric('hqud_blk_iops'),
+          fetchMetric('hqud_tma_mem_bound'),
+          fetchMetric('hqud_tma_core_bound'),
+          fetchMetric('hqud_numa_node0_cpu'),
+          fetchMetric('hqud_numa_interconnect_traffic'),
         ]);
 
-        setMetrics(prev => {
-          const nextCpi = cpi ?? prev.cpi;
-          const nextCacheMiss = cacheMiss ?? prev.cacheMiss;
-          const nextCtxSwitches = ctxSwitches ?? prev.ctxSwitches;
+        setMetrics(() => {
+          const nextCpi = Number(cpi) || 0;
+          const nextCacheMiss = Number(cacheMiss) || 0;
+          const nextCtxSwitches = Number(ctxSwitches) || 0;
           const tma = deriveTMA(nextCpi, nextCacheMiss, nextCtxSwitches);
 
           const next: MetricsState = {
-            powerW:        powerW     ?? prev.powerW,
-            ipsPerW:       ipsPerW    ?? prev.ipsPerW,
-            amat:          amat       ?? prev.amat,
-            numaMiss:      numaMiss   ?? prev.numaMiss,
-            tcpRetrans:    tcpRetrans !== null ? tcpRetrans : prev.tcpRetrans,
-            ips:           ips        ?? prev.ips,
+            powerW:        Number(powerW) || 0,
+            ipsPerW:       Number(ipsPerW) || 0,
+            amat:          Number(amat) || 0,
+            numaMiss:      Number(numaMiss) || 0,
+            numaNode0Cpu:  Number(numaNode0CpuRaw) || 0,
+            numaInterconnectTraffic: Number(numaInterconnectTrafficRaw) || 0,
+            tcpRetrans:    Number(tcpRetrans) || 0,
+            ips:           Number(ips) || 0,
             cpi:           nextCpi,
             cacheMiss:     nextCacheMiss,
             ctxSwitches:   nextCtxSwitches,
-            uptimeSeconds: uptimeSeconds ?? prev.uptimeSeconds,
+            uptimeSeconds: Number(uptimeSeconds) || 0,
             tmaRetiring:   tma.retiring,
             tmaBadSpec:    tma.badSpec,
             tmaFrontEnd:   tma.frontEnd,
             tmaBackEnd:    tma.backEnd,
-            memBound:      tma.memBound,
-            coreBound:     tma.coreBound,
-            queueDepth:    queueDepth !== null ? queueDepth : 12,   // Mock fallback
-            iops:          iops       !== null ? iops       : 4500, // Mock fallback
+            memBound:      Number(memBoundRaw) || 0,
+            coreBound:     Number(coreBoundRaw) || 0,
+            queueDepth:    Number(queueDepth) || 0,
+            iops:          Number(iops) || 0,
             mutexContention: Math.min(100, (nextCtxSwitches / MUTEX_SCALING_FACTOR) * 100),
           };
 
@@ -129,8 +131,12 @@ export function useMetrics() {
             `cpi:${formatMetric(nextCpi)} ` +
             `amat:${formatMetric(amat)}cyc ` +
             `numa:${formatMetric(numaMiss)}% ` +
+            `numa_node0_cpu:${formatMetric(numaNode0CpuRaw)} ` +
+            `numa_interconnect_traffic:${formatMetric(numaInterconnectTrafficRaw)} ` +
             `tcp:${formatMetric(tcpRetrans)} ` +
             `miss:${formatMetric(cacheMiss)}% ` +
+            `mem_bnd:${formatMetric(memBoundRaw)}% ` +
+            `core_bnd:${formatMetric(coreBoundRaw)}% ` +
             `qd:${formatMetric(queueDepth)} ` +
             `iops:${formatMetric(iops)} ` +
             `up:${formatUptime(uptimeSeconds)}`

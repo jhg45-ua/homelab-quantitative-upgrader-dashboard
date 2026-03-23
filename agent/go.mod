@@ -11,7 +11,7 @@ require (
 	hqud-backend v0.0.0-00010101000000-000000000000
 )
 
-require golang.org/x/sys v0.41.0 // indirect
+require golang.org/x/sys v0.42.0 // indirect
 
 replace hqud-backend => ../backend
 

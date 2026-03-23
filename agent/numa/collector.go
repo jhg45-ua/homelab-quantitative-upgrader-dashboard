@@ -32,6 +32,8 @@ type Stats struct {
 	TotalOtherNode uint64
 	Node0LocalNode uint64
 	Node0OtherNode uint64
+	Node1LocalNode uint64
+	Node1OtherNode uint64
 }
 
 // MissRate returns the NUMA miss rate as a percentage (0–100).
@@ -57,6 +59,7 @@ func Collect() (Stats, error) {
 	for _, nodeDir := range entries {
 		nodeName := filepath.Base(nodeDir)
 		isNode0 := nodeName == "node0"
+		isNode1 := nodeName == "node1"
 		statFile := filepath.Join(nodeDir, "numastat")
 		f, err := os.Open(statFile)
 		if err != nil {
@@ -90,11 +93,17 @@ func Collect() (Stats, error) {
 				if isNode0 {
 					aggregate.Node0LocalNode += val
 				}
+				if isNode1 {
+					aggregate.Node1LocalNode += val
+				}
 				found = true
 			case "other_node":
 				aggregate.TotalOtherNode += val
 				if isNode0 {
 					aggregate.Node0OtherNode += val
+				}
+				if isNode1 {
+					aggregate.Node1OtherNode += val
 				}
 				found = true
 			}

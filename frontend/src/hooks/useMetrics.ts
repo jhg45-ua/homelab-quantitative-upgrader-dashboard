@@ -52,7 +52,8 @@ async function fetchMetric(metricName: string, rawQuery?: string): Promise<numbe
 
 export function useMetrics() {
   const [metrics, setMetrics] = useState<MetricsState>({
-    powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, numaNode0Cpu: 0, numaInterconnectTraffic: 0, tcpRetrans: 0,
+    powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, numaNode0Cpu: 0, numaNode1Cpu: 0, numaInterconnectTraffic: 0,
+    memBoundValid: false, coreBoundValid: false, numaNode1CpuValid: false, tcpRetrans: 0,
     ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0, uptimeSeconds: 0,
     tmaRetiring: 0, tmaBadSpec: 0, tmaFrontEnd: 0, tmaBackEnd: 0,
     memBound: 0, coreBound: 0,
@@ -74,7 +75,7 @@ export function useMetrics() {
           powerW, ipsPerW, amat, numaMiss, tcpRetrans,
           ips, cpi, cacheMiss, ctxSwitches, uptimeSeconds,
           queueDepth, iops, memBoundRaw, coreBoundRaw,
-          numaNode0CpuRaw, numaInterconnectTrafficRaw,
+          numaNode0CpuRaw, numaNode1CpuRaw, numaInterconnectTrafficRaw,
         ] = await Promise.all([
           fetchMetric('hqud_power_watts'),
           fetchMetric('hqud_efficiency_ips_per_watt'),
@@ -91,6 +92,7 @@ export function useMetrics() {
           fetchMetric('hqud_tma_mem_bound'),
           fetchMetric('hqud_tma_core_bound'),
           fetchMetric('hqud_numa_node0_cpu'),
+          fetchMetric('hqud_numa_node1_cpu'),
           fetchMetric('hqud_numa_interconnect_traffic'),
         ]);
 
@@ -106,7 +108,11 @@ export function useMetrics() {
             amat:          Number(amat) || 0,
             numaMiss:      Number(numaMiss) || 0,
             numaNode0Cpu:  Number(numaNode0CpuRaw) || 0,
+            numaNode1Cpu:  Number(numaNode1CpuRaw) || 0,
             numaInterconnectTraffic: Number(numaInterconnectTrafficRaw) || 0,
+            memBoundValid: memBoundRaw !== null,
+            coreBoundValid: coreBoundRaw !== null,
+            numaNode1CpuValid: numaNode1CpuRaw !== null,
             tcpRetrans:    Number(tcpRetrans) || 0,
             ips:           Number(ips) || 0,
             cpi:           nextCpi,
@@ -132,6 +138,7 @@ export function useMetrics() {
             `amat:${formatMetric(amat)}cyc ` +
             `numa:${formatMetric(numaMiss)}% ` +
             `numa_node0_cpu:${formatMetric(numaNode0CpuRaw)} ` +
+            `numa_node1_cpu:${formatMetric(numaNode1CpuRaw)} ` +
             `numa_interconnect_traffic:${formatMetric(numaInterconnectTrafficRaw)} ` +
             `tcp:${formatMetric(tcpRetrans)} ` +
             `miss:${formatMetric(cacheMiss)}% ` +

@@ -27,14 +27,16 @@ export function ComboChart({ history }: Props) {
   const plotWidth = plotRight - plotLeft;
 
   const safeHistory = history.length > 0 ? history : [{ time: 'N/A', cpi: 0, cacheMiss: 0, ctxSwitches: 0, mutexContention: 0 }];
-  const maxCtxSwitches = Math.max(1, niceUpperBound(Math.max(...safeHistory.map(h => h.ctxSwitches), 1)));
-  const maxCacheMiss = Math.max(1, niceUpperBound(Math.max(...safeHistory.map(h => h.cacheMiss), 1)));
+  const ctxValues = safeHistory.map(h => (Number.isFinite(h.ctxSwitches) ? h.ctxSwitches : 0));
+  const missValues = safeHistory.map(h => (Number.isFinite(h.cacheMiss) ? h.cacheMiss : 0));
+  const maxCtxSwitches = Math.max(1, niceUpperBound(Math.max(...ctxValues, 1)));
+  const maxCacheMiss = Math.max(1, niceUpperBound(Math.max(...missValues, 1)));
 
   const xScale = createLinearScale(0, Math.max(1, safeHistory.length - 1), plotLeft, plotRight);
   const yLeftScale = createLinearScale(0, maxCtxSwitches, plotBottom, plotTop);
   const yRightScale = createLinearScale(0, maxCacheMiss, plotBottom, plotTop);
 
-  const linePoints = safeHistory.map((h, idx) => ({ x: xScale(idx), y: yRightScale(h.cacheMiss) }));
+  const linePoints = safeHistory.map((h, idx) => ({ x: xScale(idx), y: yRightScale(Number.isFinite(h.cacheMiss) ? h.cacheMiss : 0) }));
 
   const leftTicks = getTickValues(0, maxCtxSwitches, 5).map(value => ({ value, y: yLeftScale(value) }));
   const rightTicks = getTickValues(0, maxCacheMiss, 5).map(value => ({ value, y: yRightScale(value) }));
@@ -75,7 +77,8 @@ export function ComboChart({ history }: Props) {
 
           {safeHistory.map((h, idx) => {
             const x = xScale(idx) - barWidth / 2;
-            const y = yLeftScale(h.ctxSwitches);
+            const safeCtx = Number.isFinite(h.ctxSwitches) ? h.ctxSwitches : 0;
+            const y = yLeftScale(safeCtx);
             const barHeight = plotBottom - y;
             return (
               <rect
@@ -89,12 +92,12 @@ export function ComboChart({ history }: Props) {
                 onMouseEnter={(e) => setHoveredPoint({
                   x: e.clientX,
                   y: e.clientY,
-                  value: h.ctxSwitches,
+                  value: safeCtx,
                   label: `${h.time} - Context Switches`,
                 })}
                 onMouseLeave={() => setHoveredPoint(null)}
               >
-                <title>{`${h.time} - Context Switches: ${formatMetric(h.ctxSwitches)}`}</title>
+                <title>{`${h.time} - Context Switches: ${formatMetric(safeCtx)}`}</title>
               </rect>
             );
           })}

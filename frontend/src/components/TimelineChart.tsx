@@ -26,14 +26,20 @@ export function TimelineChart({ history }: Props) {
   const plotBottom = height - margin.bottom;
 
   const safeHistory = history.length > 0 ? history : [{ time: 'N/A', cpi: 0, cacheMiss: 0, ctxSwitches: 0, mutexContention: 0 }];
-  const yMaxRaw = Math.max(...safeHistory.map(h => h.cpi), 1);
-  const yMax = Math.max(1, niceUpperBound(yMaxRaw));
+  const finiteValues = safeHistory
+    .map(h => h.cpi)
+    .filter(v => Number.isFinite(v))
+    .map(v => Number(v));
+  const baseMin = finiteValues.length > 0 ? Math.min(...finiteValues) : 0;
+  const baseMax = finiteValues.length > 0 ? Math.max(...finiteValues) : 1;
+  const yMin = Math.max(0, baseMin);
+  const yMax = Math.max(yMin + 1, niceUpperBound(baseMax));
 
   const xScale = createLinearScale(0, Math.max(1, safeHistory.length - 1), plotLeft, plotRight);
-  const yScale = createLinearScale(0, yMax, plotBottom, plotTop);
+  const yScale = createLinearScale(yMin, yMax, plotBottom, plotTop);
 
-  const points = safeHistory.map((h, idx) => ({ x: xScale(idx), y: yScale(h.cpi) }));
-  const ticks = getTickValues(0, yMax, 5).map(value => ({ value, y: yScale(value) }));
+  const points = safeHistory.map((h, idx) => ({ x: xScale(idx), y: yScale(Number.isFinite(h.cpi) ? h.cpi : 0) }));
+  const ticks = getTickValues(yMin, yMax, 5).map(value => ({ value, y: yScale(value) }));
   const xLabelStep = Math.max(1, Math.floor(safeHistory.length / 5));
   const xLabels = safeHistory
     .map((h, idx) => ({ idx, time: h.time }))

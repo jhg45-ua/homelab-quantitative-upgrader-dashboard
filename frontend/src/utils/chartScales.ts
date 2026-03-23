@@ -8,12 +8,19 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 export function createLinearScale(domainMin: number, domainMax: number, rangeMin: number, rangeMax: number) {
+  if (!Number.isFinite(domainMin) || !Number.isFinite(domainMax) || !Number.isFinite(rangeMin) || !Number.isFinite(rangeMax)) {
+    return (_value: number) => (rangeMin + rangeMax) / 2;
+  }
+
   const span = domainMax - domainMin;
-  if (span === 0) {
+  if (!Number.isFinite(span) || span === 0) {
     return (_value: number) => (rangeMin + rangeMax) / 2;
   }
 
   return (value: number) => {
+    if (!Number.isFinite(value)) {
+      return (rangeMin + rangeMax) / 2;
+    }
     const normalized = (value - domainMin) / span;
     return rangeMin + normalized * (rangeMax - rangeMin);
   };
@@ -75,14 +82,18 @@ export function getTickValues(min: number, max: number, count: number): number[]
 
 export function polylinePath(points: SvgPoint[]): string {
   if (points.length === 0) return '';
-  return points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const validPoints = points.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (validPoints.length === 0) return '';
+  return validPoints.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
 }
 
 export function areaPath(points: SvgPoint[], baselineY: number): string {
-  if (points.length === 0) return '';
-  const line = polylinePath(points);
-  const first = points[0];
-  const last = points[points.length - 1];
+  if (points.length === 0 || !Number.isFinite(baselineY)) return '';
+  const validPoints = points.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+  if (validPoints.length === 0) return '';
+  const line = polylinePath(validPoints);
+  const first = validPoints[0];
+  const last = validPoints[validPoints.length - 1];
   return `${line} L ${last.x} ${baselineY} L ${first.x} ${baselineY} Z`;
 }
 

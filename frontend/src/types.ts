@@ -17,7 +17,11 @@ export interface MetricsState {
   amat: number;
   numaMiss: number;
   numaNode0Cpu: number;
+  numaNode1Cpu: number;
   numaInterconnectTraffic: number;
+  memBoundValid: boolean;
+  coreBoundValid: boolean;
+  numaNode1CpuValid: boolean;
   tcpRetrans: number;
   ips: number;
   cpi: number;

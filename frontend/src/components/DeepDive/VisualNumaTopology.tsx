@@ -8,6 +8,7 @@ interface CpuSnapshot {
 
 interface RamSnapshot {
   usedPct: number;
+  available: boolean;
 }
 
 interface Props {
@@ -20,21 +21,27 @@ function clamp(value: number, min: number, max: number): number {
 
 export function VisualNumaTopology({ metrics }: Props) {
   const ipcBase = metrics.cpi > 0 ? 1 / metrics.cpi : 0;
+  const node1Seen = metrics.numaNode1CpuValid;
+  const ramReady = metrics.memBoundValid || metrics.coreBoundValid;
   const node0Cpu: CpuSnapshot = {
     loadPct: clamp(Number(metrics.numaNode0Cpu) || 0, 0, 100),
     ipc: clamp(ipcBase, 0, 10),
   };
   const node1Cpu: CpuSnapshot = {
-    loadPct: clamp(100 - (Number(metrics.numaNode0Cpu) || 0), 0, 100),
+    loadPct: node1Seen ? clamp(Number(metrics.numaNode1Cpu) || 0, 0, 100) : 0,
     ipc: clamp(ipcBase, 0, 10),
   };
 
   const node0Ram: RamSnapshot = {
     usedPct: clamp(Number(metrics.memBound) || 0, 0, 100),
+    available: metrics.memBoundValid,
   };
   const node1Ram: RamSnapshot = {
     usedPct: clamp(Number(metrics.coreBound) || 0, 0, 100),
+    available: metrics.coreBoundValid,
   };
+  const node0RamReady = node0Ram.available && node0Ram.usedPct > 0;
+  const node1RamReady = node1Ram.available && node1Ram.usedPct > 0;
 
   const qpiCrossTrafficGbps = Math.max(0, Number(metrics.numaInterconnectTraffic) || 0);
 
@@ -100,10 +107,10 @@ export function VisualNumaTopology({ metrics }: Props) {
           Used / Capacity
         </text>
         <text x="320" y="358" className="font-mono text-white text-sm">
-          {formatMetric(node0Ram.usedPct)}%
+          {node0RamReady ? `${formatMetric(node0Ram.usedPct)}%` : 'RAM: N/A (Awaiting PMU)'}
         </text>
 
-        <rect x="660" y="40" width="500" height="420" rx="16" fill="#0f172a" stroke="#334155" strokeWidth="2" />
+        <rect x="660" y="40" width="500" height="420" rx="16" fill="#0f172a" stroke="#334155" strokeWidth="2" className={node1Seen ? '' : 'opacity-50'} />
         <text x="690" y="80" className="font-sans text-xs uppercase text-slate-400 tracking-widest">
           Node 1 (NUMA)
         </text>
@@ -116,7 +123,7 @@ export function VisualNumaTopology({ metrics }: Props) {
           CPU Load
         </text>
         <text x="860" y="183" className="font-mono text-white text-sm">
-          {formatMetric(node1Cpu.loadPct)}%
+          {node1Seen ? `${formatMetric(node1Cpu.loadPct)}%` : 'NODE 1 OFFLINE / UNSEEN'}
         </text>
         <text x="712" y="220" className="font-sans text-xs uppercase text-slate-400 tracking-widest">
           IPC
@@ -133,7 +140,7 @@ export function VisualNumaTopology({ metrics }: Props) {
           Used / Capacity
         </text>
         <text x="940" y="358" className="font-mono text-white text-sm">
-          {formatMetric(node1Ram.usedPct)}%
+          {node1RamReady ? `${formatMetric(node1Ram.usedPct)}%` : 'RAM: N/A (Awaiting PMU)'}
         </text>
 
         <path
@@ -161,7 +168,7 @@ export function VisualNumaTopology({ metrics }: Props) {
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <div className="font-mono text-xs text-slate-400">
-          RAM Used (Node0/Node1): {formatMetric(node0Ram.usedPct)}% / {formatMetric(node1Ram.usedPct)}%
+          RAM Used (Node0/Node1): {ramReady && node0RamReady && node1RamReady ? `${formatMetric(node0Ram.usedPct)}% / ${formatMetric(node1Ram.usedPct)}%` : 'N/A (Awaiting PMU)'}
         </div>
         <div className="font-mono text-xs text-white">
           QPI STATUS: {qpiAlert ? 'ALERT' : 'HEALTHY'}

@@ -22,7 +22,7 @@ export function AmdahlChart({ history }: Props) {
 
   const points = safeHistory.map((h, idx) => ({
     x: xScale(idx),
-    y: yScale(clamp(h.mutexContention, 0, 100)),
+    y: yScale(clamp(Number.isFinite(h.mutexContention) ? h.mutexContention : 0, 0, 100)),
   }));
 
   const ticks = getTickValues(0, 100, 5).map(value => ({ value, y: yScale(value) }));

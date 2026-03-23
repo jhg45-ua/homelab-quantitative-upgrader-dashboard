@@ -37,14 +37,13 @@ export function TMAChart({ metrics }: Props) {
   const fePct = norm(metrics.tmaFrontEnd);
   const bePct = clampPct(100 - rPct - bsPct - fePct);
 
-  const memInput = clampPct(metrics.memBound);
-  const coreInput = clampPct(metrics.coreBound);
-  const level2Total = memInput + coreInput;
+  const safeMem = Math.max(0, Number(metrics.memBound) || 0);
+  const safeCore = Math.max(0, Number(metrics.coreBound) || 0);
+  const level2Total = safeMem + safeCore || 1;
+  const memRelativePct = (safeMem / level2Total) * 100;
+  const coreRelativePct = (safeCore / level2Total) * 100;
 
-  const memShare = level2Total > 0 ? memInput / level2Total : 0.5;
-  const memWithinBackend = Number((bePct * memShare).toFixed(2));
-
-  const recommendation = evaluateBackendStalls(memInput, coreInput);
+  const recommendation = evaluateBackendStalls(safeMem, safeCore);
 
   const width = 980;
   const height = 240;
@@ -65,8 +64,10 @@ export function TMAChart({ metrics }: Props) {
   const feX = bsX + bsW;
   const beX = feX + feW;
 
-  const memW = (beW * memWithinBackend) / Math.max(bePct, 0.0001);
-  const coreW = Math.max(0, beW - memW);
+  const memW = beW * (memRelativePct / 100);
+  const coreW = beW * (coreRelativePct / 100);
+  const memLabel = Math.min(100, safeMem);
+  const coreLabel = Math.min(100, safeCore);
 
   return (
     <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
@@ -127,17 +128,17 @@ export function TMAChart({ metrics }: Props) {
 
           <rect x={beX} y={subY} width={beW} height={subH} rx={6} fill="#1e293b" stroke="#334155" strokeWidth={1} />
           <rect x={beX} y={subY} width={memW} height={subH} rx={6} fill="#9F1239">
-            <title>Memory Bound: {formatMetric(memInput)}%</title>
+            <title>Memory Bound: {formatMetric(memLabel)}%</title>
           </rect>
           <rect x={beX + memW} y={subY} width={coreW} height={subH} rx={6} fill="#EF4444">
-            <title>Core Bound: {formatMetric(coreInput)}%</title>
+            <title>Core Bound: {formatMetric(coreLabel)}%</title>
           </rect>
 
           <text x={beX + memW / 2} y={subY + 22} textAnchor="middle" className="font-mono text-white text-xs">
-            MEM {formatMetric(memInput)}%
+            MEM {formatMetric(memLabel)}%
           </text>
           <text x={beX + memW + coreW / 2} y={subY + 22} textAnchor="middle" className="font-mono text-white text-xs">
-            CORE {formatMetric(coreInput)}%
+            CORE {formatMetric(coreLabel)}%
           </text>
 
           <text x={mainX} y={subY + 58} className="font-sans font-bold text-xs uppercase fill-teal-300 tracking-widest">

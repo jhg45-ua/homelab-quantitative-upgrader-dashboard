@@ -8,7 +8,7 @@ export async function downloadAuditReport(elementId: string): Promise<void> {
   }
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageIds = ['report-page-1', 'report-page-2'];
+  const pageIds = ['report-page-1', 'report-page-2', 'report-page-3'];
   let renderedPages = 0;
 
   for (const pageId of pageIds) {

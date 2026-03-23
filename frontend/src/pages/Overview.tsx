@@ -11,7 +11,7 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.8.0 RC1";
+const APP_VERSION = "v2.8.0 RC3";
 
 export function Overview({ metrics, systemConfig }: Props) {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
@@ -141,7 +141,7 @@ export function Overview({ metrics, systemConfig }: Props) {
 
       <div className="mt-4">
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em] font-black mb-6 flex items-center gap-4">
-           <span>Core v2.8.0 RC0</span>
+           <span>Core v2.8.0 RC3</span>
            <div className="flex-1 h-px bg-slate-800"></div>
         </div>
         <div className="bg-slate-800/20 border border-slate-800/50 p-8 flex flex-col md:flex-row gap-12 text-slate-300">

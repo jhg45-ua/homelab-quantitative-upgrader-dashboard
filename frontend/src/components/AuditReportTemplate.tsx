@@ -7,6 +7,13 @@ interface AuditReportTemplateProps {
   appVersion: string;
 }
 
+interface UpgradeRecommendation {
+  component: string;
+  statusClass: string;
+  statusText: string;
+  explanation: string;
+}
+
 function pickNodeValue(values: Record<string, number>, nodeIndex: number): number {
   const aliases = [`node${nodeIndex}`, String(nodeIndex), `numa${nodeIndex}`];
   for (const alias of aliases) {
@@ -56,6 +63,50 @@ function getIoNetworkConclusion(inferredLatencyMs: number, tcpRetransmits: numbe
   return 'Storage and network pipeline are operating inside expected latency and loss envelopes.';
 }
 
+function evaluateUpgradeRecommendations(metrics: MetricsState): UpgradeRecommendation[] {
+  const ipc = metrics.cpi > 0 ? 1 / metrics.cpi : 0;
+
+  const cpuNeedsUpgrade = metrics.coreBound > 20 || metrics.cpi > 2.0 || ipc < 0.5;
+  const memoryNeedsUpgrade = metrics.memBound > 40 || metrics.amat > 25 || metrics.numaMiss > 15;
+  const storageNeedsUpgrade = metrics.queueDepth > 50 || metrics.iops < 100;
+  const networkWarning = metrics.tcpRetrans > 5;
+
+  return [
+    {
+      component: 'CPU / COMPUTE UNIT',
+      statusClass: cpuNeedsUpgrade ? 'text-red-600' : 'text-green-600',
+      statusText: cpuNeedsUpgrade ? 'UPGRADE RECOMMENDED' : 'ADEQUATE (NO UPGRADE)',
+      explanation: cpuNeedsUpgrade
+        ? 'High execution port pressure or high CPI detected. Current compute capacity is bottlenecking the pipeline. Focus on CPU upgrade for linear performance gains.'
+        : 'CPU compute capacity is adequate. Execution units are not bottlenecked. Focus on software optimization.',
+    },
+    {
+      component: 'MEMORY / RAM HIERARCHY',
+      statusClass: memoryNeedsUpgrade ? 'text-red-600' : 'text-green-600',
+      statusText: memoryNeedsUpgrade ? 'UPGRADE RECOMMENDED' : 'OPTIMAL (NO UPGRADE)',
+      explanation: memoryNeedsUpgrade
+        ? 'Critical memory bottleneck detected. High AMAT or Memory Bound slots indicate CPU stalls on DRAM fetches. Upgrading to higher bandwidth/lower latency RAM or larger cache is highly recommended.'
+        : 'Memory hierarchy is performing within acceptable margins. Access latency is minimized. No RAM upgrade needed.',
+    },
+    {
+      component: 'STORAGE SUBSYSTEM',
+      statusClass: storageNeedsUpgrade ? 'text-red-600' : 'text-green-600',
+      statusText: storageNeedsUpgrade ? 'UPGRADE RECOMMENDED' : 'HEALTHY (NO UPGRADE)',
+      explanation: storageNeedsUpgrade
+        ? 'Severe queuing delays detected via Little\'s Law. Storage subsystem is bottlenecking I/O requests. Upgrade to PCIe NVMe solid-state devices immediately.'
+        : 'Storage throughput is healthy. I/O requests are clearing the queue rapidly. No storage upgrade needed.',
+    },
+    {
+      component: 'NETWORK INTERFACE',
+      statusClass: networkWarning ? 'text-amber-600' : 'text-green-600',
+      statusText: networkWarning ? 'WARNING / CHECK INFRASTRUCTURE' : 'RELIABLE (NO UPGRADE)',
+      explanation: networkWarning
+        ? 'Packet loss and retransmissions detected. Check physical cabling, switch buffers, or upgrade NICs with Hardware Offload (TOE).'
+        : 'Network transport layer is stable. No significant packet loss. Optimal hardware condition.',
+    },
+  ];
+}
+
 export function AuditReportTemplate({ metrics, systemConfig, appVersion }: AuditReportTemplateProps) {
   const now = new Date();
   const timestamp = now.toISOString();
@@ -69,6 +120,7 @@ export function AuditReportTemplate({ metrics, systemConfig, appVersion }: Audit
   const qpiTrafficBytes = Math.max(0, ...Object.values(metrics.numaInterconnectTrafficBytesTotalByNode));
   const qpiTrafficMiB = bytesToMiB(qpiTrafficBytes);
   const inferredLatencyMs = metrics.iops > 0 ? (metrics.queueDepth / metrics.iops) * 1000 : 0;
+  const upgradeRecommendations = evaluateUpgradeRecommendations(metrics);
 
   const tmaTotal = metrics.tmaRetiring + metrics.tmaBadSpec + metrics.tmaFrontEnd + metrics.tmaBackEnd;
   const tmaRetiringPct = tmaTotal > 0 ? (metrics.tmaRetiring / tmaTotal) * 100 : 25;
@@ -368,6 +420,42 @@ export function AuditReportTemplate({ metrics, systemConfig, appVersion }: Audit
           <div style={diagnosticStyle}>
             <span style={{ fontWeight: 700, textTransform: 'uppercase', color: '#0f172a' }}>&gt; DIAGNOSTIC OUTPUT:</span> {getIoNetworkConclusion(inferredLatencyMs, metrics.tcpRetrans)}
           </div>
+        </section>
+      </div>
+
+      <div
+        id="report-page-3"
+        className="pdf-page bg-white w-[210mm] h-[297mm] p-12 overflow-hidden relative box-border"
+        style={{
+          width: '210mm',
+          height: '297mm',
+          padding: '48px',
+          overflow: 'hidden',
+          position: 'relative',
+          boxSizing: 'border-box',
+          backgroundColor: '#ffffff',
+          color: '#0f172a',
+        }}
+      >
+        <header style={{ borderBottom: '4px solid #0f172a', paddingBottom: '16px', marginBottom: '24px' }}>
+          <h1 style={{ fontWeight: 900, fontSize: '30px', letterSpacing: '-0.02em', color: '#0f172a', textTransform: 'uppercase' }}>HARDWARE QUANTITATIVE UPGRADER DASHBOARD</h1>
+          <p style={{ marginTop: '8px', fontSize: '12px', color: '#475569', fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Section Continuation // {timestamp}
+          </p>
+        </header>
+
+        <section>
+          <h2 className="bg-slate-900 text-white font-bold uppercase text-sm p-2 mb-4 tracking-wider">SECTION 4: HARDWARE LIFECYCLE &amp; UPGRADE MATRIX</h2>
+
+          {upgradeRecommendations.map((recommendation) => (
+            <div key={recommendation.component} className="mb-4 border border-slate-300">
+              <div className="bg-slate-100 border-b border-slate-300 p-2 font-bold font-sans uppercase text-xs flex justify-between tracking-tight">
+                <span>{recommendation.component}</span>
+                <span className={recommendation.statusClass}>{recommendation.statusText}</span>
+              </div>
+              <div className="p-3 font-mono text-xs text-slate-800 leading-relaxed">{recommendation.explanation}</div>
+            </div>
+          ))}
         </section>
       </div>
     </div>

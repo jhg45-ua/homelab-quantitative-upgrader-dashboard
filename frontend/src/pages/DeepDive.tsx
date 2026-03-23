@@ -32,7 +32,7 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-widest font-bold">Renderer: Native SVG // No ECharts</div>
       </header>
 
-      <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-7 flex flex-col h-[560px] backdrop-blur-sm shadow-xl relative group overflow-hidden">
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-7 pb-10 flex flex-col min-h-[640px] h-auto backdrop-blur-sm shadow-xl relative group">
           <PanelHeader
             title="Architecture Roofline"
             shortSummary="Maps operational intensity versus achievable throughput to identify memory-bound versus compute-bound workloads."

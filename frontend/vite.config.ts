@@ -18,20 +18,17 @@ export default defineConfig({
   },
   build: {
     outDir: 'build',
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         // Manual chunk splitting to optimize bundle loading:
-        // - echarts: loaded only when /deep-dive is accessed (lazy route)
         // - icons: small stable chunk with lucide-preact icons
-        // - vendors: core dependencies (preact, wouter, yaml)
+        // - vendors: core dependencies (preact, wouter)
         manualChunks: (id) => {
-          if (id.includes('node_modules/echarts')) {
-            return 'echarts';
-          }
           if (id.includes('node_modules/lucide-preact')) {
             return 'icons';
           }
-          if (id.includes('node_modules/(preact|wouter|yaml)')) {
+          if (id.includes('/node_modules/preact/') || id.includes('/node_modules/wouter/')) {
             return 'vendors';
           }
         }

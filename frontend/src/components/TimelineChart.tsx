@@ -1,34 +1,35 @@
-import ReactECharts from 'echarts-for-react';
 import type { HistoryFrame } from '../types';
 import { formatMetric } from '../utils/formatters';
+import { areaPath, createLinearScale, getTickValues, niceUpperBound, polylinePath } from '../utils/chartScales';
+import { HorizontalGrid, XAxisLabels } from './charts/SVGPrimitives';
 
 interface Props {
   history: HistoryFrame[];
 }
 
 export function TimelineChart({ history }: Props) {
-  const option = {
-    backgroundColor: 'transparent',
-    tooltip: {
-      trigger: 'axis', backgroundColor: '#0F172A', borderColor: '#334155',
-      textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 },
-      formatter: (params: any[]) =>
-        `<div class="font-mono text-[10px] text-slate-500 uppercase mb-1">${params[0].axisValue}</div>` +
-        params.map(p => `<div class="flex justify-between gap-4"><span>${p.seriesName}:</span><span class="text-red-400">${formatMetric(p.value)}</span></div>`).join(''),
-    },
-    grid: { top: 30, right: 15, bottom: 25, left: 35 },
-    xAxis: { type: 'category', data: history.map(h => h.time), axisLabel: { color: '#64748B', fontFamily: 'Space Grotesk, monospace', fontSize: 9 } },
-    yAxis: { type: 'value', min: 0, splitLine: { lineStyle: { color: '#334155' } }, name: 'CYCLES', nameTextStyle: { color: '#94A3B8', fontSize: 9 }, axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 9 } },
-    series: [{
-      name: 'CPI',
-      type: 'line',
-      data: history.map(h => h.cpi),
-      smooth: true,
-      lineStyle: { color: '#DC2626', width: 2 },
-      itemStyle: { color: '#DC2626' },
-      areaStyle: { color: 'rgba(220, 38, 38, 0.15)' }
-    }]
-  };
+  const width = 960;
+  const height = 280;
+  const margin = { top: 20, right: 14, bottom: 34, left: 40 };
+  const plotLeft = margin.left;
+  const plotRight = width - margin.right;
+  const plotTop = margin.top;
+  const plotBottom = height - margin.bottom;
+
+  const safeHistory = history.length > 0 ? history : [{ time: 'N/A', cpi: 0, cacheMiss: 0, ctxSwitches: 0, mutexContention: 0 }];
+  const yMaxRaw = Math.max(...safeHistory.map(h => h.cpi), 1);
+  const yMax = Math.max(1, niceUpperBound(yMaxRaw));
+
+  const xScale = createLinearScale(0, Math.max(1, safeHistory.length - 1), plotLeft, plotRight);
+  const yScale = createLinearScale(0, yMax, plotBottom, plotTop);
+
+  const points = safeHistory.map((h, idx) => ({ x: xScale(idx), y: yScale(h.cpi) }));
+  const ticks = getTickValues(0, yMax, 5).map(value => ({ value, y: yScale(value) }));
+  const xLabelStep = Math.max(1, Math.floor(safeHistory.length / 5));
+  const xLabels = safeHistory
+    .map((h, idx) => ({ idx, time: h.time }))
+    .filter(({ idx }) => idx % xLabelStep === 0 || idx === safeHistory.length - 1)
+    .map(({ idx, time }) => ({ x: xScale(idx), text: time }));
 
   return (
     <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
@@ -36,7 +37,25 @@ export function TimelineChart({ history }: Props) {
         <h3 className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase">CPI Timeline</h3>
       </div>
       <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
-        <ReactECharts option={option} opts={{ renderer: 'svg' }} style={{ height: '100%', width: '100%' }} />
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="CPI timeline">
+          <HorizontalGrid left={plotLeft} right={plotRight} ticks={ticks} />
+
+          <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="#475569" strokeWidth="1" />
+          <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} stroke="#475569" strokeWidth="1" />
+
+          <path d={areaPath(points, plotBottom)} fill="rgba(220, 38, 38, 0.15)" />
+          <path d={polylinePath(points)} fill="none" stroke="#DC2626" strokeWidth="2.5" />
+
+          {points.map((p, idx) => (
+            <circle key={`cpi-${idx}`} cx={p.x} cy={p.y} r="2.5" fill="#DC2626">
+              <title>{`${safeHistory[idx].time} - CPI: ${formatMetric(safeHistory[idx].cpi)}`}</title>
+            </circle>
+          ))}
+
+          <XAxisLabels labels={xLabels} y={height - 10} />
+
+          <text x={10} y={plotTop + 12} className="fill-slate-400 font-mono" style={{ fontSize: '9px' }}>CYCLES</text>
+        </svg>
       </div>
     </div>
   );

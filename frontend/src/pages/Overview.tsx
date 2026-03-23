@@ -8,7 +8,7 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.7.7";
+const APP_VERSION = "v2.7.8";
 
 /**
  * Escape HTML special characters to prevent XSS in generated reports.
@@ -272,7 +272,7 @@ export function Overview({ metrics, systemConfig }: Props) {
 
       <div className="mt-4">
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em] font-black mb-6 flex items-center gap-4">
-           <span>Core v2.7.7</span>
+           <span>Core v2.7.8</span>
            <div className="flex-1 h-px bg-slate-800"></div>
         </div>
         <div className="bg-slate-800/20 border border-slate-800/50 p-8 flex flex-col md:flex-row gap-12 text-slate-300">

@@ -1,5 +1,5 @@
-import ReactECharts from 'echarts-for-react';
 import { formatMetric } from '../utils/formatters';
+import { clamp, createLogScale, getLogTickValues, polylinePath } from '../utils/chartScales';
 
 interface Props {
   ips: number;
@@ -9,70 +9,50 @@ interface Props {
 }
 
 export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 102.4 }: Props) {
+  const width = 960;
+  const height = 280;
+  const margin = { top: 22, right: 18, bottom: 38, left: 52 };
+  const plotLeft = margin.left;
+  const plotRight = width - margin.right;
+  const plotTop = margin.top;
+  const plotBottom = height - margin.bottom;
+
   const PEAK_MIPS = peakMips;
   const PEAK_BW_GBS = memBwGbps;
   const ridgeOI = PEAK_MIPS / ((PEAK_BW_GBS * 1e9) / 64 / 1e6);
 
-  let safeOI = ridgeOI;
-  if (cacheMiss > 0) {
-    safeOI = Math.max(0.01, 100.0 / cacheMiss);
-  }
-  const safeMIPS = Math.max(1, ips / 1e6);
-
-  const bwLineData: [number, number][] = [];
-  for (let oi = 0.01; oi <= ridgeOI * 1.1; oi *= 1.12) {
-    const perf = (oi * ((PEAK_BW_GBS * 1e9) / 64)) / 1e6;
-    bwLineData.push([oi, Math.min(perf, PEAK_MIPS)]);
-  }
-  bwLineData.push([ridgeOI, PEAK_MIPS]);
-
-  const computeLineData: [number, number][] = [];
-  computeLineData.push([ridgeOI, PEAK_MIPS]);
-  for (let oi = ridgeOI * 1.3; oi <= 10000; oi *= 1.5) {
-    computeLineData.push([oi, PEAK_MIPS]);
-  }
-  computeLineData.push([10000, PEAK_MIPS]);
-
+  const xMin = 0.01;
+  const xMax = 10000;
+  const yMin = 1;
   const yMax = Math.pow(10, Math.ceil(Math.log10(PEAK_MIPS * 1.5)));
 
-  const option = {
-    backgroundColor: 'transparent',
-    tooltip: { 
-      trigger: 'item', 
-      backgroundColor: '#0F172A', 
-      borderColor: '#334155', 
-      textStyle: { color: '#F8FAFC', fontFamily: 'Space Grotesk, monospace', fontSize: 11 },
-      formatter: (params: any) => {
-        if (params.seriesName === 'Live Workload') {
-          const [oi, mips] = params.data as [number, number];
-          return `<div class="font-mono text-[10px] uppercase text-slate-500 mb-1">Live Workload</div>
-                  <div class="flex justify-between gap-4"><span>OI:</span><span class="text-blue-400">${formatMetric(oi)}</span></div>
-                  <div class="flex justify-between gap-4"><span>MIPS:</span><span class="text-blue-400">${formatMetric(mips)}</span></div>`;
-        }
-        return params.seriesName;
-      }
-    },
-    grid: { top: 30, right: 35, bottom: 40, left: 60 },
-    xAxis: {
-      type: 'log', name: 'OPERATIONAL INTENSITY (Ops/Byte)', nameLocation: 'middle', nameGap: 25, min: 0.01, max: 10000,
-      axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 10 }, splitLine: { lineStyle: { color: '#1E293B' } }, axisLine: { lineStyle: { color: '#475569' } },
-      nameTextStyle: { color: '#64748B', fontFamily: 'Inter', fontSize: 10, fontWeight: 600 }
-    },
-    yAxis: {
-      type: 'log', name: 'MIPS', min: 1, max: yMax,
-      axisLabel: { color: '#94A3B8', fontFamily: 'Space Grotesk, monospace', fontSize: 10 }, splitLine: { lineStyle: { color: '#1E293B' } }, axisLine: { lineStyle: { color: '#475569' } },
-      nameTextStyle: { color: '#64748B', fontFamily: 'Inter', fontSize: 10, fontWeight: 600 }
-    },
-    series: [
-      { name: 'Memory BW Roof', type: 'line', data: bwLineData, symbol: 'none', lineStyle: { color: '#0D9488', width: 3, type: 'solid' }, z: 10 },
-      { name: 'Compute Roof', type: 'line', data: computeLineData, symbol: 'none', lineStyle: { color: '#DC2626', width: 3, type: 'solid' }, z: 10 },
-      {
-        name: 'Live Workload', type: 'scatter', data: [[safeOI, safeMIPS]], symbolSize: 16, z: 20,
-        itemStyle: { color: '#3B82F6', borderColor: '#BFDBFE', borderWidth: 3 },
-        label: { show: true, position: 'top', formatter: 'WORKLOAD', fontFamily: 'Inter', fontSize: 9, color: '#93C5FD', fontWeight: 600 }
-      }
-    ]
-  };
+  let safeOI = ridgeOI;
+  if (cacheMiss > 0) {
+    safeOI = Math.max(xMin, 100.0 / cacheMiss);
+  }
+  safeOI = clamp(safeOI, xMin, xMax);
+  const safeMIPS = clamp(Math.max(yMin, ips / 1e6), yMin, yMax);
+
+  const xScale = createLogScale(xMin, xMax, plotLeft, plotRight);
+  const yScale = createLogScale(yMin, yMax, plotBottom, plotTop);
+
+  const bwLineData: Array<{ x: number; y: number }> = [];
+  for (let oi = xMin; oi <= Math.min(xMax, ridgeOI * 1.1); oi *= 1.12) {
+    const perf = (oi * ((PEAK_BW_GBS * 1e9) / 64)) / 1e6;
+    bwLineData.push({ x: xScale(oi), y: yScale(Math.min(perf, PEAK_MIPS)) });
+  }
+  bwLineData.push({ x: xScale(clamp(ridgeOI, xMin, xMax)), y: yScale(PEAK_MIPS) });
+
+  const computeLineData: Array<{ x: number; y: number }> = [];
+  const computeStart = clamp(ridgeOI, xMin, xMax);
+  computeLineData.push({ x: xScale(computeStart), y: yScale(PEAK_MIPS) });
+  for (let oi = Math.max(computeStart * 1.3, xMin); oi <= xMax; oi *= 1.5) {
+    computeLineData.push({ x: xScale(oi), y: yScale(PEAK_MIPS) });
+  }
+  computeLineData.push({ x: xScale(xMax), y: yScale(PEAK_MIPS) });
+
+  const xTicks = getLogTickValues(xMin, xMax);
+  const yTicks = getLogTickValues(yMin, yMax);
 
   return (
     <div className="bg-slate-800 border border-slate-700 flex flex-col h-full w-full">
@@ -85,7 +65,75 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
         </div>
       </div>
       <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
-        <ReactECharts option={option} opts={{ renderer: 'svg' }} style={{ height: '100%', width: '100%' }} />
+        <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" role="img" aria-label="Architecture roofline log-log chart">
+          {yTicks.map((tick) => (
+            <g key={`y-grid-${tick}`}>
+              <line x1={plotLeft} x2={plotRight} y1={yScale(tick)} y2={yScale(tick)} stroke="#1E293B" strokeWidth="1" />
+              <text
+                x={plotLeft - 8}
+                y={yScale(tick) + 3}
+                textAnchor="end"
+                className="fill-slate-400 font-mono"
+                style={{ fontSize: '9px' }}
+              >
+                {formatMetric(tick)}
+              </text>
+            </g>
+          ))}
+
+          {xTicks.map((tick) => (
+            <g key={`x-grid-${tick}`}>
+              <line x1={xScale(tick)} x2={xScale(tick)} y1={plotTop} y2={plotBottom} stroke="#1E293B" strokeWidth="1" />
+              <text
+                x={xScale(tick)}
+                y={plotBottom + 14}
+                textAnchor="middle"
+                className="fill-slate-500 font-mono"
+                style={{ fontSize: '9px' }}
+              >
+                {formatMetric(tick)}
+              </text>
+            </g>
+          ))}
+
+          <line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} stroke="#475569" strokeWidth="1" />
+          <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} stroke="#475569" strokeWidth="1" />
+
+          <path d={polylinePath(bwLineData)} fill="none" stroke="#0D9488" strokeWidth="3">
+            <title>{`Memory BW Roof - Peak BW: ${formatMetric(PEAK_BW_GBS)} GB/s`}</title>
+          </path>
+
+          <path d={polylinePath(computeLineData)} fill="none" stroke="#DC2626" strokeWidth="3">
+            <title>{`Compute Roof - Peak: ${formatMetric(PEAK_MIPS)} MIPS`}</title>
+          </path>
+
+          <circle cx={xScale(safeOI)} cy={yScale(safeMIPS)} r="7" fill="#3B82F6" stroke="#BFDBFE" strokeWidth="2.5">
+            <title>{`Live Workload | OI: ${formatMetric(safeOI)} | MIPS: ${formatMetric(safeMIPS)}`}</title>
+          </circle>
+          <text
+            x={xScale(safeOI)}
+            y={Math.max(plotTop + 10, yScale(safeMIPS) - 12)}
+            textAnchor="middle"
+            className="fill-blue-300 font-semibold"
+            style={{ fontSize: '9px' }}
+          >
+            WORKLOAD
+          </text>
+
+          <text x={(plotLeft + plotRight) / 2} y={height - 6} textAnchor="middle" className="fill-slate-500" style={{ fontSize: '10px' }}>
+            OPERATIONAL INTENSITY (Ops/Byte)
+          </text>
+          <text
+            x={14}
+            y={(plotTop + plotBottom) / 2}
+            textAnchor="middle"
+            transform={`rotate(-90 14 ${(plotTop + plotBottom) / 2})`}
+            className="fill-slate-500"
+            style={{ fontSize: '10px' }}
+          >
+            MIPS
+          </text>
+        </svg>
       </div>
     </div>
   );

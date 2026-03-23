@@ -8,7 +8,7 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.7.6";
+const APP_VERSION = "v2.7.7";
 
 /**
  * Escape HTML special characters to prevent XSS in generated reports.
@@ -193,6 +193,13 @@ export function Overview({ metrics, systemConfig }: Props) {
           value={metrics.powerW !== null ? formatMetric(metrics.powerW) : '-'} 
           unit="W" 
           footer="Total Package Draw" 
+          headerRight={
+            <InfoTooltip
+              title="Active Power"
+              shortSummary="Total package draw in watts. Rising power with flat throughput indicates efficiency loss."
+              wikiHash="#roofline"
+            />
+          }
         />
         <DatasheetCard 
           title="CPU EFFICIENCY" 
@@ -200,6 +207,13 @@ export function Overview({ metrics, systemConfig }: Props) {
           unit="M IPS/W" 
           footer="Instr. per Watt" 
           valueColor="text-teal-400" 
+          headerRight={
+            <InfoTooltip
+              title="CPU Efficiency"
+              shortSummary="Instructions per watt. Higher values mean better performance under a fixed power envelope."
+              wikiHash="#roofline"
+            />
+          }
         />
         <DatasheetCard 
           title="MEMORY AMAT" 
@@ -219,12 +233,26 @@ export function Overview({ metrics, systemConfig }: Props) {
           value={metrics.numaMiss !== null ? formatMetric(metrics.numaMiss) : '-'} 
           unit="%" 
           footer="Cross-node Fetches" 
+          headerRight={
+            <InfoTooltip
+              title="NUMA Miss Rate"
+              shortSummary="Percentage of memory requests that cross NUMA nodes, increasing latency and interconnect pressure."
+              wikiHash="#amat"
+            />
+          }
         />
         <DatasheetCard 
           title="TCP RETRANSMITS" 
           value={metrics.tcpRetrans !== null ? formatMetric(metrics.tcpRetrans) : '-'} 
           unit="/s" 
           footer="Network Reliability" 
+          headerRight={
+            <InfoTooltip
+              title="TCP Retransmits"
+              shortSummary="Packets resent due to drops or reordering. Persistent elevation often correlates with queue pressure."
+              wikiHash="#littles"
+            />
+          }
         />
         <DatasheetCard 
           title="SYSTEM UPTIME" 
@@ -232,12 +260,19 @@ export function Overview({ metrics, systemConfig }: Props) {
           unit="" 
           footer="Node Dependability" 
           valueColor="text-emerald-400"
+          headerRight={
+            <InfoTooltip
+              title="System Uptime"
+              shortSummary="Continuous service time. Useful for correlating stability incidents with thermal, memory, or I/O trends."
+              wikiHash="#cpi"
+            />
+          }
         />
       </div>
 
       <div className="mt-4">
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em] font-black mb-6 flex items-center gap-4">
-           <span>Core v2.7.6</span>
+           <span>Core v2.7.7</span>
            <div className="flex-1 h-px bg-slate-800"></div>
         </div>
         <div className="bg-slate-800/20 border border-slate-800/50 p-8 flex flex-col md:flex-row gap-12 text-slate-300">

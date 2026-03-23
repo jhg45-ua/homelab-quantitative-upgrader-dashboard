@@ -5,6 +5,8 @@ import { AmdahlChart } from '../components/AmdahlChart';
 import { TimelineChart } from '../components/TimelineChart';
 import { ComboChart } from '../components/ComboChart';
 import { VisualNumaTopology } from '../components/DeepDive/VisualNumaTopology';
+import { PanelHeader } from '../components/UI/PanelHeader';
+import { InfoTooltip } from '../components/UI/InfoTooltip';
 import type { MetricsState, HistoryFrame, SystemConfig } from '../types';
 import { formatMetric } from '../utils/formatters';
 
@@ -32,13 +34,18 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
         <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col h-[650px] backdrop-blur-sm shadow-xl relative group">
-           <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.2em] mb-6 font-black flex items-center justify-between">
-              <span className="group-hover:text-teal-400 transition-colors">Architecture Roofline</span>
+          <PanelHeader
+            title="Architecture Roofline"
+            shortSummary="Maps operational intensity versus achievable throughput to identify memory-bound versus compute-bound workloads."
+            wikiHash="#roofline"
+            titleClassName="group-hover:text-teal-400 transition-colors"
+            rightSlot={
               <div className="flex gap-6">
                 <span className="text-teal-400">▬ Mem BW</span>
                 <span className="text-red-500">▬ Peak Comp</span>
               </div>
-           </div>
+            }
+          />
            <div className="flex-1 bg-[#0F172A]/30 border border-slate-800/50">
              <RooflineChart 
                 ips={metrics.ips} 
@@ -67,25 +74,33 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
         <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col h-[380px] backdrop-blur-sm shadow-xl">
-          <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.2em] mb-6 font-black flex items-center justify-between">
-            <span>TMA Pipeline Breakdown</span>
-            <div className="flex gap-4">
-              <span className="text-green-500">■ Retiring</span>
-              <span className="text-orange-500">■ Bad Spec</span>
-              <span className="text-blue-500">■ Front-End</span>
-              <span className="text-red-500">■ Back-End</span>
-            </div>
-          </div>
+          <PanelHeader
+            title="TMA Pipeline Breakdown"
+            shortSummary="Top-down slot decomposition of the pipeline to isolate retiring work versus front-end, speculation, and back-end stalls."
+            wikiHash="#tma"
+            rightSlot={
+              <div className="flex gap-4">
+                <span className="text-green-500">■ Retiring</span>
+                <span className="text-orange-500">■ Bad Spec</span>
+                <span className="text-blue-500">■ Front-End</span>
+                <span className="text-red-500">■ Back-End</span>
+              </div>
+            }
+          />
           <div className="flex-1">
             <TMAChart metrics={metrics} />
           </div>
         </div>
 
         <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col h-[380px] backdrop-blur-sm shadow-xl">
-          <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.2em] mb-6 font-black flex items-center justify-between">
-            <span>Amdahl Lock Contention</span>
-            <span className="text-teal-400 bg-teal-400/5 px-4 py-1.5 border border-teal-500/20 uppercase tracking-widest text-[9px]">Mutex Wait Distribution</span>
-          </div>
+          <PanelHeader
+            title="Amdahl Lock Contention"
+            shortSummary="Shows serialization pressure from lock contention, highlighting throughput limits predicted by Amdahl's Law."
+            wikiHash="#littles"
+            rightSlot={
+              <span className="text-teal-400 bg-teal-400/5 px-4 py-1.5 border border-teal-500/20 uppercase tracking-widest text-[9px]">Mutex Wait Distribution</span>
+            }
+          />
           <div className="flex-1">
             <AmdahlChart history={history} />
           </div>
@@ -103,7 +118,7 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
       </div>
 
       <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-8 flex flex-col h-[460px] backdrop-blur-sm shadow-xl overflow-hidden">
-        <VisualNumaTopology />
+        <VisualNumaTopology metrics={metrics} />
       </div>
 
       {/* Little's Law Section - Balanced Premium Proportion */}
@@ -111,7 +126,14 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
         <div className="px-10 py-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
            <div className="flex items-center gap-6">
               <div className="w-3 h-3 bg-teal-500 shadow-[0_0_15px_#14b8a6]"></div>
-              <h3 className="text-base font-black uppercase tracking-[0.35em] text-white">Queueing Theory Pipeline Assessment</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black uppercase tracking-[0.35em] text-white">Queueing Theory Pipeline Assessment</h3>
+                <InfoTooltip
+                  title="Queueing Theory"
+                  shortSummary="Applies Little's Law (L = lambda x W) to estimate residency time from queue depth and arrival rate."
+                  wikiHash="#littles"
+                />
+              </div>
            </div>
            <span className="text-[10px] font-mono text-slate-600 font-bold tracking-[0.3em] uppercase">L = λ × W</span>
         </div>

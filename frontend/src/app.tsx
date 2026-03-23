@@ -1,14 +1,37 @@
 import { Route, Switch, Link } from 'wouter';
+import { lazy, Suspense } from 'preact/compat';
 import { LayoutDashboard, Terminal, Activity, BookOpen } from 'lucide-preact';
 import { useMetrics } from './hooks/useMetrics';
 import { useSystemConfig } from './hooks/useSystemConfig';
 
 import { Overview } from './pages/Overview';
-import { DeepDive } from './pages/DeepDive';
 import { HardwareConsole } from './components/HardwareConsole';
-import { MicroarchitectureWiki } from './pages/MicroarchitectureWiki';
 
-function NavLink({ href, icon, label }: { href: string; icon: any; label: string }) {
+// Lazy-loaded routes to reduce initial bundle (code splitting by route)
+const DeepDive = lazy(() => import('./pages/DeepDive').then(m => ({ default: m.DeepDive })));
+const MicroarchitectureWiki = lazy(() => import('./pages/MicroarchitectureWiki').then(m => ({ default: m.MicroarchitectureWiki })));
+
+// Suspense fallback component for route loading
+function RouteLoading() {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <div className="inline-block p-4 border border-slate-700 rounded-sm bg-slate-800/50 mb-4">
+          <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">Loading route...</p>
+      </div>
+    </div>
+  );
+}
+
+interface NavLinkProps {
+  href: string;
+  icon: any; // VNode from lucide-preact icons
+  label: string;
+}
+
+function NavLink({ href, icon, label }: NavLinkProps) {
   return (
     <Link href={href}>
       <a className="flex items-center gap-4 px-6 py-3 text-sm font-mono font-black text-slate-500 hover:text-slate-100 hover:bg-slate-800/50 transition-all rounded-sm group uppercase tracking-widest border-l-2 border-transparent hover:border-teal-500">
@@ -26,7 +49,7 @@ export function App() {
   return (
     <div className="flex h-screen bg-[#060B16] text-slate-300 font-sans selection:bg-teal-500/30 selection:text-teal-200 overflow-hidden">
       
-      {/* Sidebar - Balanced Premium width (v2.7.5) */}
+      {/* Sidebar - Balanced Premium width (v2.7.6) */}
       <aside className="w-72 border-r border-slate-800 bg-[#0A0F1D]/80 backdrop-blur-md hidden md:flex flex-col shrink-0">
         <div className="p-8 border-b border-slate-800 flex items-center gap-4">
           <div className="w-4 h-4 bg-teal-500 shadow-[0_0_10px_#14b8a6]"></div>
@@ -46,7 +69,7 @@ export function App() {
             <span className="text-[10px] font-mono text-slate-500 font-black uppercase tracking-widest">eBPF Stream Active</span>
           </div>
           <div className="text-[10px] font-mono text-slate-700 font-bold uppercase tracking-widest flex justify-between">
-            <span>Core v2.7.5</span>
+            <span>Core v2.7.6</span>
             <span className="text-slate-800">JH-G // R720-A</span>
           </div>
         </div>
@@ -58,7 +81,9 @@ export function App() {
             <Overview metrics={metrics} systemConfig={systemConfig} />
           </Route>
           <Route path="/deep-dive">
-            <DeepDive metrics={metrics} history={history} systemConfig={systemConfig} />
+            <Suspense fallback={<RouteLoading />}>
+              <DeepDive metrics={metrics} history={history} systemConfig={systemConfig} />
+            </Suspense>
           </Route>
           <Route path="/console">
             <div className="flex flex-col h-full gap-8">
@@ -72,7 +97,9 @@ export function App() {
             </div>
           </Route>
           <Route path="/wiki">
-            <MicroarchitectureWiki metrics={metrics} systemConfig={systemConfig} />
+            <Suspense fallback={<RouteLoading />}>
+              <MicroarchitectureWiki metrics={metrics} systemConfig={systemConfig} />
+            </Suspense>
           </Route>
         </Switch>
       </main>

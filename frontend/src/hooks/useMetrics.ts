@@ -2,10 +2,28 @@ import { useState, useEffect } from 'preact/hooks';
 import type { MetricsState, HistoryFrame, LogEntry } from '../types';
 import { parsePromQLResponse, formatMetric, formatUptime } from '../utils/formatters';
 
+// ============================================================================
+// TMA DERIVATION CONSTANTS
+// ============================================================================
+// These constants calibrate the Top-Down Microarchitecture Analysis heuristics
+// for Xeon E5-2670 (Sandy Bridge-EP, 16 cores, 2.6-3.3 GHz)
+
+/** CPI scaling: divides raw CPI by this factor to normalize to [0, 1] range */
+const CPI_PENALTY_SCALE = 3;
+
+/** Cache miss rate scaling: divides miss rate by this to normalize */
+const CACHE_PENALTY_SCALE = 50;
+
+/** Context switches scaling: divides switches/sec by this to normalize */
+const CTX_PENALTY_SCALE = 50000;
+
+/** Mutex contention scaling: context switches per this unit map to % contention */
+const MUTEX_SCALING_FACTOR = 10000;
+
 function deriveTMA(cpi: number, cacheMiss: number, ctxSwitches: number) {
-  const cpiPenalty = Math.min(cpi / 3, 1);
-  const cachePenalty = Math.min(cacheMiss / 50, 1);
-  const ctxPenalty = Math.min(ctxSwitches / 50000, 1);
+  const cpiPenalty = Math.min(cpi / CPI_PENALTY_SCALE, 1);
+  const cachePenalty = Math.min(cacheMiss / CACHE_PENALTY_SCALE, 1);
+  const ctxPenalty = Math.min(ctxSwitches / CTX_PENALTY_SCALE, 1);
   const backEnd = Math.round(Math.max(10, cpiPenalty * 40 + cachePenalty * 30));
   const badSpec = Math.round(Math.max(2, ctxPenalty * 15));
   const frontEnd = Math.round(Math.max(3, 15 - cpiPenalty * 8));
@@ -101,7 +119,7 @@ export function useMetrics() {
             coreBound:     tma.coreBound,
             queueDepth:    queueDepth !== null ? queueDepth : 12,   // Mock fallback
             iops:          iops       !== null ? iops       : 4500, // Mock fallback
-            mutexContention: Math.min(100, (nextCtxSwitches / 10000) * 100),
+            mutexContention: Math.min(100, (nextCtxSwitches / MUTEX_SCALING_FACTOR) * 100),
           };
 
           // Expanded audit log — all metrics visible in /console

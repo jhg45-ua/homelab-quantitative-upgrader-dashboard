@@ -8,6 +8,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -106,7 +107,11 @@ func handleGenerateAudit(w http.ResponseWriter, r *http.Request) {
 		pythonBin = "python3"
 	}
 
-	cmd := exec.Command(pythonBin, "generate_report.py")
+	// Create context with 30-second timeout to prevent hanging requests
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, pythonBin, "generate_report.py")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -146,19 +151,44 @@ type spaHandler struct {
 }
 
 func (h spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path, err := filepath.Abs(r.URL.Path)
+	// Sanitize path to prevent traversal attacks (e.g., /../../../etc/passwd)
+	// Use filepath.Clean to canonicalize, then verify it stays within staticPath
+	cleanPath := filepath.Clean(r.URL.Path)
+	if cleanPath == "" {
+		cleanPath = "."
+	}
+	// Remove leading slash for joining with staticPath (filepath.Join handles multiple slashes)
+	if cleanPath[0] == '/' {
+		cleanPath = cleanPath[1:]
+	}
+	
+	fullPath := filepath.Join(h.staticPath, cleanPath)
+	
+	// Verify that the resolved path is still within staticPath (security check)
+	absStaticPath, err := filepath.Abs(h.staticPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	path = filepath.Join(h.staticPath, path)
+	absFullPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	
+	// Ensure fullPath is within the static directory (not escaped via ../)
+	if !filepath.HasPrefix(absFullPath, absStaticPath) {
+		// Path traversal attempt detected; return index.html as fallback
+		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
+		return
+	}
 
-	_, err = os.Stat(path)
+	_, err = os.Stat(fullPath)
 	if os.IsNotExist(err) {
 		http.ServeFile(w, r, filepath.Join(h.staticPath, h.indexPath))
 		return
 	} else if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 

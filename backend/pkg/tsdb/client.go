@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 )
@@ -33,7 +34,7 @@ func NewClient(url string) *Client {
 	}
 }
 
-// formatPrometheus formats metrics into Prometheus text format
+// formatPrometheus formats metrics into Prometheus text format with deterministic label ordering
 // Example: metric_name{label_name="label_value"} 123.4
 func formatPrometheus(metrics []Metric) string {
 	var sb strings.Builder
@@ -42,13 +43,19 @@ func formatPrometheus(metrics []Metric) string {
 		
 		if len(m.Labels) > 0 {
 			sb.WriteString("{")
-			var i int
-			for k, v := range m.Labels {
+			
+			// Sort label keys for deterministic output (prevents series fragmentation from map randomness)
+			keys := make([]string, 0, len(m.Labels))
+			for k := range m.Labels {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			
+			for i, k := range keys {
 				if i > 0 {
 					sb.WriteString(",")
 				}
-				sb.WriteString(fmt.Sprintf("%s=\"%s\"", k, v))
-				i++
+				sb.WriteString(fmt.Sprintf("%s=\"%s\"", k, m.Labels[k]))
 			}
 			sb.WriteString("}")
 		}

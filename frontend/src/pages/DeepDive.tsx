@@ -1,4 +1,4 @@
-import { Heatmap } from '../components/Heatmap';
+import { lazy, Suspense } from 'preact/compat';
 import { RooflineChart } from '../components/RooflineChart';
 import { TMAChart } from '../components/TMAChart';
 import { AmdahlChart } from '../components/AmdahlChart';
@@ -7,6 +7,9 @@ import { ComboChart } from '../components/ComboChart';
 import { VisualNumaTopology } from '../components/DeepDive/VisualNumaTopology';
 import type { MetricsState, HistoryFrame, SystemConfig } from '../types';
 import { formatMetric } from '../utils/formatters';
+
+// Lazy-loaded Heatmap component to reduce initial bundle
+const Heatmap = lazy(() => import('../components/Heatmap').then(m => ({ default: m.Heatmap })));
 
 interface Props {
   metrics: MetricsState;
@@ -47,7 +50,18 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
         </div>
 
         <div className="bg-slate-800/40 border border-slate-700/50 flex flex-col h-[650px] backdrop-blur-sm shadow-xl overflow-hidden">
-           <Heatmap />
+           <Suspense fallback={
+             <div className="flex items-center justify-center h-full">
+               <div className="text-center">
+                 <div className="inline-block p-4 border border-slate-700 rounded-sm bg-slate-800/50 mb-4">
+                   <div className="w-6 h-6 border-2 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
+                 </div>
+                 <p className="text-xs font-mono text-slate-500 uppercase tracking-widest">Loading Heatmap...</p>
+               </div>
+             </div>
+           }>
+             <Heatmap />
+           </Suspense>
         </div>
       </div>
 

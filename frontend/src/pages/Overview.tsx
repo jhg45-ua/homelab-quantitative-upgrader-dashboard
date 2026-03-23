@@ -8,14 +8,24 @@ interface Props {
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.7.5";
+const APP_VERSION = "v2.7.6";
+
+/**
+ * Escape HTML special characters to prevent XSS in generated reports.
+ * Safely converts user-controlled strings before injecting into HTML templates.
+ */
+function escapeHtml(text: string): string {
+  const elem = document.createElement('div');
+  elem.textContent = text;
+  return elem.innerHTML;
+}
 
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
   const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const isoTs = now.toISOString();
-  const nodeName = config?.node_name ?? 'r720-baremetal';
-  const hwDesc = config?.hardware_desc ?? 'Dell PowerEdge R720 (2x Intel Xeon E5-2670)';
+  const dateStr = escapeHtml(now.toISOString().split('T')[0]);
+  const isoTs = escapeHtml(now.toISOString());
+  const nodeName = escapeHtml(config?.node_name ?? 'r720-baremetal');
+  const hwDesc = escapeHtml(config?.hardware_desc ?? 'Dell PowerEdge R720 (2x Intel Xeon E5-2670)');
   const cores = config?.specs.cores ?? 16;
   const peakMips = config?.specs.peak_mips ?? 166400;
   const memBw = config?.specs.max_mem_bw_gbps ?? 102.4;
@@ -227,7 +237,7 @@ export function Overview({ metrics, systemConfig }: Props) {
 
       <div className="mt-4">
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em] font-black mb-6 flex items-center gap-4">
-           <span>Core v2.7.5</span>
+           <span>Core v2.7.6</span>
            <div className="flex-1 h-px bg-slate-800"></div>
         </div>
         <div className="bg-slate-800/20 border border-slate-800/50 p-8 flex flex-col md:flex-row gap-12 text-slate-300">
@@ -251,7 +261,16 @@ export function Overview({ metrics, systemConfig }: Props) {
   );
 }
 
-function DatasheetCard({ title, value, unit, footer, valueColor = "text-slate-100", headerRight = null }: any) {
+interface DatasheetCardProps {
+  title: string;
+  value: string | number;
+  unit: string;
+  footer: string;
+  valueColor?: string;
+  headerRight?: any;
+}
+
+function DatasheetCard({ title, value, unit, footer, valueColor = "text-slate-100", headerRight = null }: DatasheetCardProps) {
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col justify-between group hover:border-teal-500/30 transition-all backdrop-blur-sm shadow-xl">
       <div>

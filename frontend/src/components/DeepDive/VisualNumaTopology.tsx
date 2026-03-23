@@ -1,4 +1,3 @@
-import { useState } from 'preact/hooks';
 import { formatMetric } from '../../utils/formatters';
 
 interface CpuSnapshot {
@@ -11,12 +10,21 @@ interface RamSnapshot {
   capacityGb: number;
 }
 
+// Static NUMA topology data for Dell PowerEdge R720 with dual Xeon E5-2670
+// These are mock/reference values to illustrate the topology visualization.
+// Live data integration requires Prometheus integration (future phase).
+const NODE0_CPU: CpuSnapshot = { loadPct: 62.378, ipc: 1.87 };
+const NODE0_RAM: RamSnapshot = { usedGb: 73.129, capacityGb: 96 };
+const NODE1_CPU: CpuSnapshot = { loadPct: 48.901, ipc: 1.63 };
+const NODE1_RAM: RamSnapshot = { usedGb: 65.488, capacityGb: 96 };
+const QPI_CROSS_TRAFFIC_GBPS = 24.391;
+
 export function VisualNumaTopology() {
-  const [node0Cpu] = useState<CpuSnapshot>({ loadPct: 62.378, ipc: 1.87 });
-  const [node0Ram] = useState<RamSnapshot>({ usedGb: 73.129, capacityGb: 96 });
-  const [node1Cpu] = useState<CpuSnapshot>({ loadPct: 48.901, ipc: 1.63 });
-  const [node1Ram] = useState<RamSnapshot>({ usedGb: 65.488, capacityGb: 96 });
-  const [qpiCrossTrafficGbps] = useState<number>(24.391);
+  const node0Cpu = NODE0_CPU;
+  const node0Ram = NODE0_RAM;
+  const node1Cpu = NODE1_CPU;
+  const node1Ram = NODE1_RAM;
+  const qpiCrossTrafficGbps = QPI_CROSS_TRAFFIC_GBPS;
 
   const qpiAlert = qpiCrossTrafficGbps >= 20;
   const qpiStroke = qpiAlert ? '#dc2626' : '#14b8a6';

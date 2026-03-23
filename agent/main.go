@@ -48,6 +48,18 @@ func loadConfig(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// calculateDelta safely computes the delta between two uint64 counters,
+// handling cases where the counter has reset/wrapped around.
+// Returns 0 if current < previous (indicating a reset), otherwise returns current - previous.
+func calculateDelta(current, previous uint64) uint64 {
+	if current < previous {
+		// Counter has reset or wrapped; return 0 to avoid misleading spike
+		log.Printf("[WARN] Counter underflow detected (prev=%d, curr=%d). Treating as reset.", previous, current)
+		return 0
+	}
+	return current - previous
+}
+
 func main() {
 	log.Println("Loading Unified Dashboard Configuration...")
 	configPath := "config.yaml"
@@ -122,7 +134,11 @@ func main() {
 	tsdbClient := tsdb.NewClient("http://localhost:8428/api/v1/import/prometheus")
 
 	// Store previous PMU counts to calculate deltas
-	prevCounters, _ := pmuCollector.ReadCounters()
+	// CRITICAL: Must not ignore error here - corrupts all subsequent delta calculations
+	prevCounters, err := pmuCollector.ReadCounters()
+	if err != nil {
+		log.Fatalf("Failed to read initial PMU counters: %v", err)
+	}
 
 	// Previous TCP retransmit count for delta computation
 	var prevTcpRetransmits uint64 = 0
@@ -237,10 +253,7 @@ func main() {
 		}
 
 		if completedOK {
-			var deltaOps uint64
-			if completedOps >= prevCompletedOps {
-				deltaOps = completedOps - prevCompletedOps
-			}
+			deltaOps := calculateDelta(completedOps, prevCompletedOps)
 			prevCompletedOps = completedOps
 			iopsPS := float64(deltaOps) / 5.0 // 5s tick
 			go func(v float64) {
@@ -262,11 +275,11 @@ func main() {
 			continue
 		}
 
-		deltaCyc := curr.Cycles - prevCounters.Cycles
-		deltaInst := curr.Instructions - prevCounters.Instructions
-		deltaCacheRefs := curr.CacheRefs - prevCounters.CacheRefs
-		deltaCacheMisses := curr.CacheMisses - prevCounters.CacheMisses
-		deltaCtx := curr.CtxSwitches - prevCounters.CtxSwitches
+		deltaCyc := calculateDelta(curr.Cycles, prevCounters.Cycles)
+		deltaInst := calculateDelta(curr.Instructions, prevCounters.Instructions)
+		deltaCacheRefs := calculateDelta(curr.CacheRefs, prevCounters.CacheRefs)
+		deltaCacheMisses := calculateDelta(curr.CacheMisses, prevCounters.CacheMisses)
+		deltaCtx := calculateDelta(curr.CtxSwitches, prevCounters.CtxSwitches)
 
 		prevCounters = curr
 
@@ -399,7 +412,7 @@ func main() {
 			var curTcp uint64
 			var k uint32 = 0
 			if err := netObjs.TcpRetransmitCount.Lookup(k, &curTcp); err == nil {
-				delta := curTcp - prevTcpRetransmits
+				delta := calculateDelta(curTcp, prevTcpRetransmits)
 				prevTcpRetransmits = curTcp
 				retransmitsPS := float64(delta) / 5.0
 				log.Printf("--- TCP Retransmits/s: %.2f (total: %d) ---", retransmitsPS, curTcp)

@@ -6,6 +6,16 @@ const EXPECTED_BUCKETS = ['0.1ms', '0.5ms', '1ms', '2ms', '5ms', '10ms', '25ms',
 // Microseconds thresholds for EXPECTED_BUCKETS
 const THRESHOLDS = [100, 500, 1000, 2000, 5000, 10000, 25000, 50000, 100000, Infinity];
 
+// Type definitions for Prometheus query responses
+interface PromQLMetric {
+  [key: string]: string | number;
+}
+
+interface PromQLResult {
+  metric: PromQLMetric;
+  value?: (string | number)[];
+}
+
 export function Heatmap() {
   const [devices, setDevices] = useState<string[]>([]);
   const [heatmapData, setHeatmapData] = useState<Record<string, {label: string, value: number}[]>>({});
@@ -18,10 +28,10 @@ export function Heatmap() {
           `/api/v1/query?query=${encodeURIComponent(`increase(hqud_io_latency_usec_bucket{host="${HOST}"}[2m])`)}`
         );
         const json = await res.json();
-        const results: any[] = json?.data?.result ?? [];
+        const results: PromQLResult[] = json?.data?.result ?? [];
 
         const uniqueDevices = results.length > 0 
-          ? Array.from(new Set(results.map((s: any) => s.metric?.device ?? s.metric?.modulo ?? 'ebpf_io'))).sort()
+          ? Array.from(new Set(results.map((s: PromQLResult) => String(s.metric?.device ?? s.metric?.modulo ?? 'ebpf_io')))).sort()
           : ['ebpf_io'];
           
         setDevices(uniqueDevices);
@@ -33,20 +43,20 @@ export function Heatmap() {
           const buckets = EXPECTED_BUCKETS.map(label => ({ label, value: 0 }));
           
           // Get results for this device
-          const deviceResults = results.filter((s: any) => (s.metric?.device ?? s.metric?.modulo ?? 'ebpf_io') === dev);
+          const deviceResults = results.filter((s: PromQLResult) => (s.metric?.device ?? s.metric?.modulo ?? 'ebpf_io') === dev);
           
           // Parse and sort by 'le' value
-          const parsed = deviceResults.map((s: any) => {
+          const parsed = deviceResults.map((s: PromQLResult) => {
             const leStr = s.metric?.le ?? '+Inf';
             let leNum = Infinity;
             if (leStr !== '+Inf') {
-              leNum = parseFloat(leStr);
+              leNum = parseFloat(String(leStr));
               // Handle seconds vs microseconds: if < 1.0, it's likely seconds (e.g. 0.001)
               if (leNum <= 10) leNum *= 1000000; // Translate seconds (standard Prometheus) to microseconds
             }
             return {
               le: leNum,
-              val: parseFloat(s.value?.[1] ?? '0')
+              val: parseFloat(String(s.value?.[1] ?? '0'))
             };
           }).sort((a, b) => a.le - b.le);
 

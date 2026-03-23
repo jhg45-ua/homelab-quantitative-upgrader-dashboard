@@ -59,9 +59,9 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
       <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/50 flex items-center justify-between shrink-0">
         <h3 className="text-[10px] md:text-xs font-semibold tracking-widest text-slate-300 uppercase">Architecture Roofline</h3>
         <div className="flex gap-3 items-center">
-          <span className="flex items-center gap-1 text-[8px] font-mono"><span className="w-3 h-0.5 bg-[#0D9488] inline-block"></span><span className="text-slate-500">MEM BW</span></span>
-          <span className="flex items-center gap-1 text-[8px] font-mono"><span className="w-3 h-0.5 bg-[#DC2626] inline-block"></span><span className="text-slate-500">COMPUTE</span></span>
-          <span className="text-[8px] md:text-[9px] font-mono text-[#DC2626] border border-[#DC2626]/50 px-1 rounded-sm bg-red-500/10">BOUNDARY</span>
+          <span className="flex items-center gap-1 text-[8px] font-mono"><span className="w-3 h-0.5 bg-[#0ea5e9] inline-block"></span><span className="text-slate-500">MEM BW</span></span>
+          <span className="flex items-center gap-1 text-[8px] font-mono"><span className="w-3 h-0.5 bg-[#ef4444] inline-block"></span><span className="text-slate-500">COMPUTE</span></span>
+          <span className="text-[8px] md:text-[9px] font-mono text-[#ef4444] border border-[#ef4444]/50 px-1 rounded-sm bg-red-500/10">BOUNDARY</span>
         </div>
       </div>
       <div className="p-0 h-full flex-1 w-full bg-[#0F172A]/50">
@@ -74,7 +74,7 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
 
           {yTicks.map((tick) => (
             <g key={`y-grid-${tick}`}>
-              <line x1={plotLeft} x2={plotRight} y1={yScale(tick)} y2={yScale(tick)} stroke="#1E293B" strokeWidth="1" />
+              <line x1={plotLeft} x2={plotRight} y1={yScale(tick)} y2={yScale(tick)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
               <text
                 x={plotLeft - 10}
                 y={yScale(tick)}
@@ -90,7 +90,7 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
 
           {xTicks.map((tick) => (
             <g key={`x-grid-${tick}`}>
-              <line x1={xScale(tick)} x2={xScale(tick)} y1={plotTop} y2={plotBottom} stroke="#1E293B" strokeWidth="1" />
+              <line x1={xScale(tick)} x2={xScale(tick)} y1={plotTop} y2={plotBottom} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" />
               <text
                 x={xScale(tick)}
                 y={plotBottom + 16}
@@ -107,11 +107,11 @@ export function RooflineChart({ ips, cacheMiss, peakMips = 166400, memBwGbps = 1
           <line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} stroke="#475569" strokeWidth="1" />
 
           <g clipPath="url(#roofline-plot-clip)">
-            <path d={polylinePath(bwLineData)} fill="none" stroke="#0D9488" strokeWidth="3">
+            <path d={polylinePath(bwLineData)} fill="none" stroke="#0ea5e9" strokeWidth="2">
               <title>{`Memory BW Roof - Peak BW: ${formatMetric(PEAK_BW_GBS)} GB/s`}</title>
             </path>
 
-            <path d={polylinePath(computeLineData)} fill="none" stroke="#DC2626" strokeWidth="3">
+            <path d={polylinePath(computeLineData)} fill="none" stroke="#ef4444" strokeWidth="2">
               <title>{`Compute Roof - Peak: ${formatMetric(PEAK_MIPS)} MIPS`}</title>
             </path>
 

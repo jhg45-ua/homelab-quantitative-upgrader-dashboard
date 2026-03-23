@@ -9,7 +9,7 @@ interface AuditReportTemplateProps {
 
 interface UpgradeRecommendation {
   component: string;
-  statusClass: string;
+  statusColor: string;
   statusText: string;
   explanation: string;
 }
@@ -74,7 +74,7 @@ function evaluateUpgradeRecommendations(metrics: MetricsState): UpgradeRecommend
   return [
     {
       component: 'CPU / COMPUTE UNIT',
-      statusClass: cpuNeedsUpgrade ? 'text-red-600' : 'text-green-600',
+      statusColor: cpuNeedsUpgrade ? '#dc2626' : '#16a34a',
       statusText: cpuNeedsUpgrade ? 'UPGRADE RECOMMENDED' : 'ADEQUATE (NO UPGRADE)',
       explanation: cpuNeedsUpgrade
         ? 'High execution port pressure or high CPI detected. Current compute capacity is bottlenecking the pipeline. Focus on CPU upgrade for linear performance gains.'
@@ -82,7 +82,7 @@ function evaluateUpgradeRecommendations(metrics: MetricsState): UpgradeRecommend
     },
     {
       component: 'MEMORY / RAM HIERARCHY',
-      statusClass: memoryNeedsUpgrade ? 'text-red-600' : 'text-green-600',
+      statusColor: memoryNeedsUpgrade ? '#dc2626' : '#16a34a',
       statusText: memoryNeedsUpgrade ? 'UPGRADE RECOMMENDED' : 'OPTIMAL (NO UPGRADE)',
       explanation: memoryNeedsUpgrade
         ? 'Critical memory bottleneck detected. High AMAT or Memory Bound slots indicate CPU stalls on DRAM fetches. Upgrading to higher bandwidth/lower latency RAM or larger cache is highly recommended.'
@@ -90,7 +90,7 @@ function evaluateUpgradeRecommendations(metrics: MetricsState): UpgradeRecommend
     },
     {
       component: 'STORAGE SUBSYSTEM',
-      statusClass: storageNeedsUpgrade ? 'text-red-600' : 'text-green-600',
+      statusColor: storageNeedsUpgrade ? '#dc2626' : '#16a34a',
       statusText: storageNeedsUpgrade ? 'UPGRADE RECOMMENDED' : 'HEALTHY (NO UPGRADE)',
       explanation: storageNeedsUpgrade
         ? 'Severe queuing delays detected via Little\'s Law. Storage subsystem is bottlenecking I/O requests. Upgrade to PCIe NVMe solid-state devices immediately.'
@@ -98,7 +98,7 @@ function evaluateUpgradeRecommendations(metrics: MetricsState): UpgradeRecommend
     },
     {
       component: 'NETWORK INTERFACE',
-      statusClass: networkWarning ? 'text-amber-600' : 'text-green-600',
+      statusColor: networkWarning ? '#d97706' : '#16a34a',
       statusText: networkWarning ? 'WARNING / CHECK INFRASTRUCTURE' : 'RELIABLE (NO UPGRADE)',
       explanation: networkWarning
         ? 'Packet loss and retransmissions detected. Check physical cabling, switch buffers, or upgrade NICs with Hardware Offload (TOE).'
@@ -445,15 +445,51 @@ export function AuditReportTemplate({ metrics, systemConfig, appVersion }: Audit
         </header>
 
         <section>
-          <h2 className="bg-slate-900 text-white font-bold uppercase text-sm p-2 mb-4 tracking-wider">SECTION 4: HARDWARE LIFECYCLE &amp; UPGRADE MATRIX</h2>
+          <h2
+            style={{
+              backgroundColor: '#0f172a',
+              color: '#ffffff',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              fontSize: '14px',
+              padding: '8px',
+              marginBottom: '16px',
+              letterSpacing: '0.08em',
+            }}
+          >
+            SECTION 4: HARDWARE LIFECYCLE &amp; UPGRADE MATRIX
+          </h2>
 
           {upgradeRecommendations.map((recommendation) => (
-            <div key={recommendation.component} className="mb-4 border border-slate-300">
-              <div className="bg-slate-100 border-b border-slate-300 p-2 font-bold font-sans uppercase text-xs flex justify-between tracking-tight">
+            <div key={recommendation.component} style={{ marginBottom: '16px', border: '1px solid #cbd5e1' }}>
+              <div
+                style={{
+                  backgroundColor: '#f1f5f9',
+                  borderBottom: '1px solid #cbd5e1',
+                  padding: '8px',
+                  fontWeight: 700,
+                  fontFamily: 'Inter, Segoe UI, Helvetica, Arial, sans-serif',
+                  textTransform: 'uppercase',
+                  fontSize: '12px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  letterSpacing: '0.03em',
+                }}
+              >
                 <span>{recommendation.component}</span>
-                <span className={recommendation.statusClass}>{recommendation.statusText}</span>
+                <span style={{ color: recommendation.statusColor }}>{recommendation.statusText}</span>
               </div>
-              <div className="p-3 font-mono text-xs text-slate-800 leading-relaxed">{recommendation.explanation}</div>
+              <div
+                style={{
+                  padding: '12px',
+                  fontFamily: 'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, monospace',
+                  fontSize: '12px',
+                  color: '#1e293b',
+                  lineHeight: 1.6,
+                }}
+              >
+                {recommendation.explanation}
+              </div>
             </div>
           ))}
         </section>

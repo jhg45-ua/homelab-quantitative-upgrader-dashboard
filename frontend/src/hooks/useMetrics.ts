@@ -10,7 +10,13 @@ function deriveTMA(cpi: number, cacheMiss: number, ctxSwitches: number) {
   const badSpec = Math.round(Math.max(2, ctxPenalty * 15));
   const frontEnd = Math.round(Math.max(3, 15 - cpiPenalty * 8));
   const retiring = Math.max(5, 100 - backEnd - badSpec - frontEnd);
-  return { retiring, badSpec, frontEnd, backEnd };
+
+  // L2 split heuristic: cache pressure drives Memory Bound, remaining backend pressure is Core Bound.
+  const memShare = Math.min(0.85, Math.max(0.2, cachePenalty * 0.75 + cpiPenalty * 0.15));
+  const memBound = Number((backEnd * memShare).toFixed(2));
+  const coreBound = Number((backEnd - memBound).toFixed(2));
+
+  return { retiring, badSpec, frontEnd, backEnd, memBound, coreBound };
 }
 
 const HOST = 'r720-baremetal';
@@ -36,6 +42,7 @@ export function useMetrics() {
     powerW: 0, ipsPerW: 0, amat: 0, numaMiss: 0, tcpRetrans: 0,
     ips: 0, cpi: 0, cacheMiss: 0, ctxSwitches: 0, uptimeSeconds: 0,
     tmaRetiring: 25, tmaBadSpec: 5, tmaFrontEnd: 10, tmaBackEnd: 60,
+    memBound: 35, coreBound: 25,
     queueDepth: 12, iops: 4500, mutexContention: 0,
   });
 
@@ -90,6 +97,8 @@ export function useMetrics() {
             tmaBadSpec:    tma.badSpec,
             tmaFrontEnd:   tma.frontEnd,
             tmaBackEnd:    tma.backEnd,
+            memBound:      tma.memBound,
+            coreBound:     tma.coreBound,
             queueDepth:    queueDepth !== null ? queueDepth : 12,   // Mock fallback
             iops:          iops       !== null ? iops       : 4500, // Mock fallback
             mutexContention: Math.min(100, (nextCtxSwitches / 10000) * 100),

@@ -6,7 +6,7 @@ import { useSystemConfig } from './hooks/useSystemConfig';
 import { Overview } from './pages/Overview';
 import { DeepDive } from './pages/DeepDive';
 import { HardwareConsole } from './components/HardwareConsole';
-import { Wiki } from './pages/Wiki';
+import { MicroarchitectureWiki } from './pages/MicroarchitectureWiki';
 
 function NavLink({ href, icon, label }: { href: string; icon: any; label: string }) {
   return (
@@ -26,7 +26,7 @@ export function App() {
   return (
     <div className="flex h-screen bg-[#060B16] text-slate-300 font-sans selection:bg-teal-500/30 selection:text-teal-200 overflow-hidden">
       
-      {/* Sidebar - Balanced Premium width (v2.7.0) */}
+      {/* Sidebar - Balanced Premium width (v2.7.5) */}
       <aside className="w-72 border-r border-slate-800 bg-[#0A0F1D]/80 backdrop-blur-md hidden md:flex flex-col shrink-0">
         <div className="p-8 border-b border-slate-800 flex items-center gap-4">
           <div className="w-4 h-4 bg-teal-500 shadow-[0_0_10px_#14b8a6]"></div>
@@ -46,7 +46,7 @@ export function App() {
             <span className="text-[10px] font-mono text-slate-500 font-black uppercase tracking-widest">eBPF Stream Active</span>
           </div>
           <div className="text-[10px] font-mono text-slate-700 font-bold uppercase tracking-widest flex justify-between">
-            <span>Core v2.7.0</span>
+            <span>Core v2.7.5</span>
             <span className="text-slate-800">JH-G // R720-A</span>
           </div>
         </div>
@@ -72,7 +72,7 @@ export function App() {
             </div>
           </Route>
           <Route path="/wiki">
-             <Wiki />
+            <MicroarchitectureWiki metrics={metrics} systemConfig={systemConfig} />
           </Route>
         </Switch>
       </main>

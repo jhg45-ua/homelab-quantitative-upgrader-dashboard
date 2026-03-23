@@ -4,6 +4,7 @@ import { TMAChart } from '../components/TMAChart';
 import { AmdahlChart } from '../components/AmdahlChart';
 import { TimelineChart } from '../components/TimelineChart';
 import { ComboChart } from '../components/ComboChart';
+import { VisualNumaTopology } from '../components/DeepDive/VisualNumaTopology';
 import type { MetricsState, HistoryFrame, SystemConfig } from '../types';
 import { formatMetric } from '../utils/formatters';
 
@@ -85,6 +86,10 @@ export function DeepDive({ metrics, history, systemConfig }: Props) {
         <div className="bg-slate-800/40 border border-slate-700/50 flex flex-col h-[380px] backdrop-blur-sm shadow-xl overflow-hidden">
           <ComboChart history={history} />
         </div>
+      </div>
+
+      <div className="w-full bg-slate-800/40 border border-slate-700/50 p-6 md:p-8 flex flex-col h-[460px] backdrop-blur-sm shadow-xl overflow-hidden">
+        <VisualNumaTopology />
       </div>
 
       {/* Little's Law Section - Balanced Premium Proportion */}

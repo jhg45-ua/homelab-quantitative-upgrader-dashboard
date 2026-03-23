@@ -26,6 +26,8 @@ export interface MetricsState {
   tmaBadSpec: number;
   tmaFrontEnd: number;
   tmaBackEnd: number;
+  memBound: number;
+  coreBound: number;
   queueDepth: number;
   iops: number;
   mutexContention: number;

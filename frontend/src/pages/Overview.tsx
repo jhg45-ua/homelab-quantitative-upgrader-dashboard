@@ -1,13 +1,14 @@
 import type { MetricsState, SystemConfig } from '../types';
 import { FileText, Cpu, Server } from 'lucide-preact';
 import { formatMetric, formatUptime } from '../utils/formatters';
+import { InfoTooltip } from '../components/UI/InfoTooltip';
 
 interface Props {
   metrics: MetricsState;
   systemConfig: SystemConfig | null;
 }
 
-const APP_VERSION = "v2.7.0";
+const APP_VERSION = "v2.7.5";
 
 function generateAuditReport(metrics: MetricsState, config: SystemConfig | null) {
   const now = new Date();
@@ -195,6 +196,13 @@ export function Overview({ metrics, systemConfig }: Props) {
           value={metrics.amat !== null ? formatMetric(metrics.amat) : '-'} 
           unit="cyc" 
           footer="Avg Mem Access Time" 
+          headerRight={
+            <InfoTooltip
+              title="AMAT"
+              shortSummary="Average Memory Access Time calculates the cost of cache misses."
+              wikiHash="#amat"
+            />
+          }
         />
         <DatasheetCard 
           title="NUMA MISS RATE" 
@@ -219,7 +227,7 @@ export function Overview({ metrics, systemConfig }: Props) {
 
       <div className="mt-4">
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.3em] font-black mb-6 flex items-center gap-4">
-           <span>Core v2.7.0</span>
+           <span>Core v2.7.5</span>
            <div className="flex-1 h-px bg-slate-800"></div>
         </div>
         <div className="bg-slate-800/20 border border-slate-800/50 p-8 flex flex-col md:flex-row gap-12 text-slate-300">
@@ -243,13 +251,16 @@ export function Overview({ metrics, systemConfig }: Props) {
   );
 }
 
-function DatasheetCard({ title, value, unit, footer, valueColor = "text-slate-100" }: any) {
+function DatasheetCard({ title, value, unit, footer, valueColor = "text-slate-100", headerRight = null }: any) {
   return (
     <div className="bg-slate-800/40 border border-slate-700/50 p-8 flex flex-col justify-between group hover:border-teal-500/30 transition-all backdrop-blur-sm shadow-xl">
       <div>
-        <div className="text-slate-400 text-[10px] font-mono font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 bg-slate-500 group-hover:bg-teal-400 transition-colors"></div>
-          {title}
+        <div className="text-slate-400 text-[10px] font-mono font-black uppercase tracking-[0.2em] mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-slate-500 group-hover:bg-teal-400 transition-colors"></div>
+            {title}
+          </div>
+          {headerRight}
         </div>
         <div className="flex items-baseline gap-4">
           <span className={`text-5xl md:text-6xl font-black ${valueColor} tabular-nums tracking-tighter drop-shadow-md`}>{value}</span>
